@@ -10,7 +10,13 @@ import { Muted } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { n } from "@/lib/format";
 import type { ProductStock } from "@/lib/types";
-import { addProduct, updateProduct, type ProductFormState } from "./actions";
+import {
+  addProduct,
+  updateProduct,
+  uploadProductImage,
+  type ProductFormState,
+} from "./actions";
+import { ImageField, type PickedImage } from "./image-field";
 
 export function AddProductButton() {
   const [open, setOpen] = useState(false);
@@ -70,10 +76,48 @@ function ProductDialog({
   // A failed save hands the typing back; a fresh dialog starts from the row.
   const v = state.values;
 
+  const [picked, setPicked] = useState<PickedImage | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   useEffect(() => {
-    if (!state.savedAt) return;
-    toast(toastMessage);
-    onClose();
+    if (!state.savedAt || !state.productId) return;
+
+    // The storage path is keyed by product id, so the image can only go up
+    // once the row exists. A save with no new image is done already.
+    if (!picked) {
+      toast(toastMessage);
+      onClose();
+      return;
+    }
+
+    let cancelled = false;
+    setUploading(true);
+
+    const body = new FormData();
+    body.set("product_id", state.productId);
+    body.set("image", picked.blob, `${state.productId}.jpg`);
+
+    uploadProductImage({}, body)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.error) {
+          setImageError(result.error);
+          setUploading(false);
+          return;
+        }
+        toast(`${toastMessage} · image uploaded`);
+        onClose();
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setImageError("Could not upload that image. Try again.");
+        setUploading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
     // Only react to a fresh save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.savedAt]);
@@ -139,6 +183,13 @@ function ProductDialog({
           />
         </Field>
 
+        <ImageField
+          currentUrl={product?.image_url ?? null}
+          productName={product?.name ?? "New product"}
+          onPick={setPicked}
+          onError={setImageError}
+        />
+
         {product ? (
           <Note calm>
             Reserved {n(product.reserved_qty)} · pending{" "}
@@ -147,25 +198,33 @@ function ProductDialog({
           </Note>
         ) : null}
 
-        <FieldError>{state.error}</FieldError>
+        <FieldError>{state.error ?? imageError}</FieldError>
 
         <div className="flex gap-[9px]">
-          <Button variant="ghost" className="flex-1" onClick={onClose}>
+          <Button
+            variant="ghost"
+            className="flex-1"
+            onClick={onClose}
+            disabled={uploading}
+          >
             Cancel
           </Button>
-          <Submit label={mode === "add" ? "Add product" : "Save"} />
+          <Submit
+            label={mode === "add" ? "Add product" : "Save"}
+            uploading={uploading}
+          />
         </div>
       </form>
     </Modal>
   );
 }
 
-function Submit({ label }: { label: string }) {
+function Submit({ label, uploading }: { label: string; uploading: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" className="flex-1" disabled={pending}>
-      {pending ? "Saving…" : label}
+    <Button type="submit" className="flex-1" disabled={pending || uploading}>
+      {uploading ? "Uploading…" : pending ? "Saving…" : label}
     </Button>
   );
 }

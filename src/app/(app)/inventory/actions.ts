@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireSupplier } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /** `L03-R02-B07` — line 01-08, rack 01-99, bin 01-14. */
@@ -15,6 +16,8 @@ export type ProductFormState = {
   error?: string;
   /** Bumped on every success so the dialog knows to close. */
   savedAt?: number;
+  /** The row that was written, so a new product can take an image next. */
+  productId?: string;
   /**
    * What was submitted. React resets an uncontrolled form once the action
    * settles, so a failed save has to hand the values back or the typing is
@@ -92,9 +95,11 @@ export async function addProduct(
   const profile = await requireSupplier();
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("products")
-    .insert({ ...parsed, supplier_id: profile.supplier_id });
+    .insert({ ...parsed, supplier_id: profile.supplier_id })
+    .select("id")
+    .single();
 
   if (error) {
     return { error: explain(error.message), values: submitted(formData) };
@@ -105,7 +110,7 @@ export async function addProduct(
   revalidatePath("/warehouse");
   revalidatePath("/dashboard");
 
-  return { savedAt: Date.now() };
+  return { savedAt: Date.now(), productId: data.id };
 }
 
 export async function updateProduct(
@@ -135,6 +140,87 @@ export async function updateProduct(
   revalidatePath("/catalog");
   revalidatePath("/warehouse");
   revalidatePath("/dashboard");
+
+  return { savedAt: Date.now(), productId: id };
+}
+
+export type ImageState = { error?: string; savedAt?: number };
+
+const BUCKET = "product-images";
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Stores an already-compressed image at `{supplier_id}/{product_id}.jpg` and
+ * writes the public URL onto the product.
+ *
+ * The upload runs with the service role: the bucket policy in
+ * `docs/schema.sql` grants INSERT only, so overwriting an existing image would
+ * fail under RLS. Ownership is checked first with the caller's own client, so
+ * the elevated key never widens what they can reach.
+ */
+export async function uploadProductImage(
+  _previous: ImageState,
+  formData: FormData,
+): Promise<ImageState> {
+  const productId = String(formData.get("product_id") ?? "");
+  const file = formData.get("image");
+
+  if (!productId) return { error: "That product is no longer on the shelf." };
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose an image file to upload." };
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: "That image is too large. Choose one under 4 MB." };
+  }
+
+  const profile = await requireSupplier();
+  const supabase = await createClient();
+
+  // RLS scopes this read to the caller's own shelf, so a hit proves ownership.
+  const { data: owned } = await supabase
+    .from("products")
+    .select("id")
+    .eq("id", productId)
+    .eq("supplier_id", profile.supplier_id)
+    .maybeSingle();
+
+  if (!owned) return { error: "That product is not on your shelf." };
+
+  const admin = createAdminClient();
+  const path = `${profile.supplier_id}/${productId}.jpg`;
+
+  const { error: uploadError } = await admin.storage
+    .from(BUCKET)
+    .upload(path, file, {
+      contentType: "image/jpeg",
+      upsert: true,
+      cacheControl: "3600",
+    });
+
+  if (uploadError) {
+    return { error: `Could not upload that image: ${uploadError.message}` };
+  }
+
+  const {
+    data: { publicUrl },
+  } = admin.storage.from(BUCKET).getPublicUrl(path);
+
+  // The path never changes, so the URL carries a version to beat the CDN.
+  const versioned = `${publicUrl}?v=${Date.now()}`;
+
+  const { error } = await supabase
+    .from("products")
+    .update({ image_url: versioned })
+    .eq("id", productId);
+
+  if (error) return { error: explain(error.message) };
+
+  revalidatePath("/inventory");
+  revalidatePath("/catalog");
+  revalidatePath("/warehouse");
+  revalidatePath("/dashboard");
+  revalidatePath("/requests");
+  revalidatePath("/approvals");
 
   return { savedAt: Date.now() };
 }

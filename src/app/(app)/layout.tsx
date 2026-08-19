@@ -1,3 +1,4 @@
+import { ReserveRequestsLive } from "@/components/reserve-requests-live";
 import { Topbar } from "@/components/topbar";
 import { Shell } from "@/components/ui/shell";
 import { ToastProvider } from "@/components/ui/toast";
@@ -12,6 +13,7 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
+      <ReserveRequestsLive />
       <Shell>
         <Topbar profile={profile} />
         {children}
