@@ -38,9 +38,21 @@ npm run types
 Two things the schema file does not cover:
 
 ```sql
--- Required for the live-updating dashboard. Without it the app works, it
+-- 1. Required for the live-updating dashboard. Without it the app works, it
 -- just does not refresh on its own when a supplier approves.
 alter publication supabase_realtime add table reserve_requests;
+
+-- 2. Optional, but worth knowing about. A direct
+--    "update products set total_qty = ..." fails for a supplier with
+--    "new row violates row-level security policy for table stock_movements":
+--    the products_guard trigger writes the audit row, stock_movements has RLS
+--    on with a select policy only, and the trigger is not security definer.
+--    Either of these fixes it; without them, every quantity change must go
+--    through the security-definer bulk_update_stock RPC, which is what the
+--    app does today.
+alter function guard_total_qty() security definer;
+-- or
+create policy sm_insert on stock_movements for insert with check (true);
 ```
 
 Accounts are provisioned in Supabase, not in the app — there is no sign-up
@@ -93,6 +105,28 @@ restricted to same-origin paths.
   stay on screen.
 - **Warehouse codes are `L03-R02-B07`** — line 03, rack 02, bin 07. The layout
   page derives all 8 × 14 bins from them; nothing about the layout is stored.
+
+### Bulk stock update
+
+The inventory page takes a pasted or uploaded CSV of `sku,total_qty` with an
+optional `warehouse_code`, previews the diff against what is on the shelf, then
+commits through `bulk_update_stock(p_rows jsonb)`. That RPC reports per row
+rather than failing the batch, so one bad SKU does not cost the others; the
+result table shows each row's outcome and a failed-row count. "Download CSV
+template" exports the supplier's current SKUs and quantities, so the round trip
+works without hand-typing a header.
+
+Every single-row quantity change — the inline box on a row, and the quantity
+field in the edit dialog — goes through the same RPC, for the reason in the
+Database section above.
+
+### Layout toggle
+
+The catalog and the inventory each offer a grid and a rows view. Both carry the
+same facts, so switching changes the shape rather than the information. The
+choice is stored per route in a `sllr-view-*` cookie written by a server action,
+so the server renders the right view on the first paint. The catalog opens as a
+grid, the inventory as rows.
 
 ### Shape of the code
 
