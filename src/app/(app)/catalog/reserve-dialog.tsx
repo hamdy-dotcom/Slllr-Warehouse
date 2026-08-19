@@ -12,13 +12,23 @@ import { sendReserveRequest, type ReserveState } from "@/lib/actions/reserve";
 import { n } from "@/lib/format";
 import type { ProductStock } from "@/lib/types";
 
-export function ReserveButton({ product }: { product: ProductStock }) {
+export function ReserveButton({
+  product,
+  compact,
+}: {
+  product: ProductStock;
+  /** Row view wants a button that sits in a cell, not a full-width one. */
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button className="w-full" onClick={() => setOpen(true)}>
-        Reserve stock
+      <Button
+        className={compact ? undefined : "w-full"}
+        onClick={() => setOpen(true)}
+      >
+        {compact ? "Reserve" : "Reserve stock"}
       </Button>
       {open ? (
         <ReserveDialog product={product} onClose={() => setOpen(false)} />

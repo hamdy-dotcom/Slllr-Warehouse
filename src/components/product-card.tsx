@@ -3,11 +3,19 @@ import { StockBar } from "@/components/ui/stock-bar";
 import { n } from "@/lib/format";
 import type { ProductStock } from "@/lib/types";
 
+/**
+ * The grid view. Carries the same facts as a row — image, name, SKU,
+ * warehouse code, total, reserved, pending, free — so switching layout
+ * changes the shape, not the information.
+ */
 export function ProductCard({
   product,
+  totalSlot,
   action,
 }: {
   product: ProductStock;
+  /** Replaces the total figure, e.g. the inventory's inline editor. */
+  totalSlot?: React.ReactNode;
   /** Full-width action at the foot of the card. */
   action?: React.ReactNode;
 }) {
@@ -24,7 +32,14 @@ export function ProductCard({
       />
 
       <div>
-        <div className="text-product font-medium">{product.name}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-product font-medium">{product.name}</span>
+          {product.is_active ? null : (
+            <span className="rounded-pill bg-neutral-soft px-[10px] py-[4px] text-meta text-ink-2">
+              unlisted
+            </span>
+          )}
+        </div>
         <div className="font-mono text-meta text-ink-3">{product.sku}</div>
       </div>
 
@@ -34,9 +49,21 @@ export function ProductCard({
         total={product.total_qty}
       />
 
+      <div className="flex items-center justify-between text-th text-ink-2">
+        <span>Total</span>
+        {totalSlot ?? (
+          <b className="font-medium tabular-nums text-ink">
+            {n(product.total_qty)}
+          </b>
+        )}
+      </div>
+
       <div className="flex justify-between text-th text-ink-2">
         <span>
-          Reserved <b className="text-ink">{n(product.reserved_qty)}</b>
+          Reserved <b className="text-orange">{n(product.reserved_qty)}</b>
+        </span>
+        <span>
+          Pending <b className="text-amber-ink">{n(product.pending_qty)}</b>
         </span>
         <span>
           Free{" "}

@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 
 import { ProductCard } from "@/components/product-card";
-import { ReserveButton } from "./reserve-dialog";
+import { ProductTable } from "@/components/product-table";
 import { ShelfToolbar } from "@/components/shelf-toolbar";
+import { ViewToggle } from "@/components/view-toggle";
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { listProductStock } from "@/lib/data/products";
 import { applyShelfFilter, isShelfFilter, type ShelfFilter } from "@/lib/shelf";
+import { readViewMode } from "@/lib/view-cookie";
+import { ReserveButton } from "./reserve-dialog";
 
 export const metadata: Metadata = { title: "Catalog · Sllr warehouse" };
+
+const ROUTE = "/catalog";
 
 export default async function CatalogPage({
   searchParams,
@@ -17,7 +22,11 @@ export default async function CatalogPage({
   const { q = "", filter } = await searchParams;
   const active: ShelfFilter = isShelfFilter(filter) ? filter : "all";
 
-  const shelf = await listProductStock({ activeOnly: true });
+  const [shelf, view] = await Promise.all([
+    listProductStock({ activeOnly: true }),
+    readViewMode(ROUTE),
+  ]);
+
   const visible = applyShelfFilter(shelf, { q, filter: active });
 
   return (
@@ -30,22 +39,19 @@ export default async function CatalogPage({
         </Muted>
       </div>
 
-      <ShelfToolbar q={q} filter={active} />
+      <ShelfToolbar q={q} filter={active}>
+        <ViewToggle route={ROUTE} mode={view} />
+      </ShelfToolbar>
 
-      {shelf.length === 0 ? (
+      {visible.length === 0 ? (
         <Card>
           <Empty>
-            The shelf is empty. Products show up here once the supplier lists
-            them.
+            {shelf.length === 0
+              ? "The shelf is empty. Products show up here once the supplier lists them."
+              : "Nothing matches that. Try a different SKU or clear the filter."}
           </Empty>
         </Card>
-      ) : visible.length === 0 ? (
-        <Card>
-          <Empty>
-            Nothing matches that. Try a different SKU or clear the filter.
-          </Empty>
-        </Card>
-      ) : (
+      ) : view === "grid" ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-[14px]">
           {visible.map((product) => (
             <ProductCard
@@ -55,6 +61,18 @@ export default async function CatalogPage({
             />
           ))}
         </div>
+      ) : (
+        <Card>
+          <ProductTable
+            products={visible}
+            trailing={[
+              {
+                header: "",
+                cell: (product) => <ReserveButton product={product} compact />,
+              },
+            ]}
+          />
+        </Card>
       )}
     </>
   );

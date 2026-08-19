@@ -41,12 +41,23 @@ export function AddProductButton() {
   );
 }
 
-export function EditProductButton({ product }: { product: ProductStock }) {
+export function EditProductButton({
+  product,
+  fullWidth,
+}: {
+  product: ProductStock;
+  /** The grid view wants the action to span the card. */
+  fullWidth?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button variant="ghost" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        className={fullWidth ? "w-full" : undefined}
+        onClick={() => setOpen(true)}
+      >
         Edit
       </Button>
       {open ? (
