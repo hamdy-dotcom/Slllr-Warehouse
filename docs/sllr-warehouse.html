@@ -1,0 +1,373 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sllr × Supplier — Warehouse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2EEE9; --card:#FFFFFF; --card2:#FBF8F5; --tint:#F7EFE9;
+  --ink:#1D1B18; --ink2:#7C766D; --ink3:#A9A29A;
+  --line:#E8E2DA;
+  --orange:#F0663A; --orange-soft:#FDEDE6;
+  --amber:#F5B231; --amber-soft:#FEF3DF;
+  --green:#2E9E5B; --green-soft:#E6F4EA;
+  --grey:#CFC9C1;
+  --r:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Poppins',ui-rounded,'Segoe UI',system-ui,sans-serif;font-weight:400;-webkit-font-smoothing:antialiased;padding:18px}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+.shell{max-width:1280px;margin:0 auto;background:linear-gradient(180deg,#FAF6F1,#F3EEE8);border-radius:30px;padding:20px 22px 26px;border:1px solid #EFE9E1}
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:9px;font-weight:500;font-size:17px}
+.logo .mark{width:26px;height:22px;display:flex;align-items:flex-end;gap:2px}
+.logo .mark i{display:block;width:3px;border-radius:2px;background:var(--orange)}
+.nav{display:flex;gap:6px;margin:0 auto;flex-wrap:wrap}
+.nav button{padding:9px 17px;border-radius:14px;font-size:13.5px;color:var(--ink2);transition:.18s}
+.nav button:hover{background:#FFFFFFAA}
+.nav button.on{background:#fff;color:var(--ink);font-weight:500;box-shadow:0 1px 3px #0000000d}
+.who{display:flex;align-items:center;gap:8px;background:#fff;border-radius:16px;padding:5px 6px 5px 14px}
+.who span{font-size:12.5px;color:var(--ink2)}
+.who select{border:none;background:var(--tint);border-radius:11px;padding:7px 10px;font-size:12.5px;font-weight:500;outline:none}
+.bell{width:36px;height:36px;border-radius:12px;background:#fff;display:grid;place-items:center;font-size:15px;position:relative}
+.bell b{position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--orange)}
+h1{font-size:29px;font-weight:500;line-height:1.2;letter-spacing:-.4px}
+.sub{color:var(--ink2);font-size:13.5px;margin-top:6px;max-width:330px;line-height:1.55}
+.grid{display:grid;gap:14px}
+.card{background:var(--card);border-radius:var(--r);padding:18px 20px}
+.soft{background:var(--card2)}
+.kpi{display:flex;flex-direction:column;gap:10px;position:relative}
+.kpi .ico{width:34px;height:34px;border-radius:12px;background:var(--orange);color:#fff;display:grid;place-items:center;font-size:15px}
+.kpi .lab{font-size:12.5px;color:var(--ink2)}
+.kpi .val{font-size:26px;font-weight:500;letter-spacing:-.5px}
+.kpi .val small{font-size:13px;color:var(--ink3);font-weight:400}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:4px 9px;border-radius:9px;background:var(--green-soft);color:var(--green)}
+.pill.warn{background:var(--amber-soft);color:#9A6B0C}
+.pill.hot{background:var(--orange-soft);color:#B8431E}
+.arrowbtn{position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;background:var(--tint);display:grid;place-items:center;font-size:12px;color:var(--ink2)}
+.spark{width:100%;height:34px}
+.secttl{font-size:16px;font-weight:500;margin-bottom:2px}
+.muted{color:var(--ink2);font-size:12.5px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row b{font-weight:500}
+.legend{display:flex;gap:16px;align-items:center;font-size:12px;color:var(--ink2);flex-wrap:wrap}
+.legend i{display:inline-block;width:22px;height:5px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.lines{display:flex;gap:16px;overflow-x:auto;padding-top:12px}
+.lineblk{min-width:74px}
+.lineblk .lt{font-size:11px;color:var(--ink2);margin-bottom:7px}
+.bins{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+.bin{height:19px;border-radius:6px;background:#F4F1ED;font-size:9.5px;color:var(--ink3);display:grid;place-items:center;transition:.15s}
+.bin.used{background:var(--orange);color:#fff}
+.bin.low{background:var(--amber);color:#5B3F04}
+.bin.clickable{cursor:pointer}
+.bin.clickable:hover{transform:scale(1.18)}
+.bin.sel{outline:2px solid var(--ink);outline-offset:1px}
+.prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:14px}
+.pcard{background:#fff;border-radius:var(--r);padding:13px;display:flex;flex-direction:column;gap:10px}
+.thumb{background:var(--tint);border-radius:16px;height:126px;display:grid;place-items:center;overflow:hidden;position:relative}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb .code{position:absolute;left:9px;bottom:9px;background:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;color:var(--ink2);font-family:ui-monospace,monospace}
+.pname{font-size:14px;font-weight:500;line-height:1.35}
+.meta{font-size:11px;color:var(--ink3);font-family:ui-monospace,monospace}
+.bar{height:7px;border-radius:5px;background:#F0ECE6;display:flex;overflow:hidden}
+.bar span{display:block;height:100%}
+.legrow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink2)}
+.btn{border-radius:13px;padding:9px 14px;font-size:12.5px;font-weight:500;transition:.16s;border:1px solid transparent}
+.btn.primary{background:var(--orange);color:#fff}
+.btn.primary:hover{background:#DD5730}
+.btn.ghost{background:#fff;border-color:var(--line);color:var(--ink)}
+.btn.ghost:hover{background:var(--card2)}
+.btn.ok{background:var(--green);color:#fff}
+.btn.no{background:#fff;border-color:var(--line);color:#B8431E}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search{flex:1;min-width:190px;background:#fff;border-radius:15px;padding:11px 15px;display:flex;align-items:center;gap:9px}
+.search input{border:none;outline:none;background:none;width:100%;font-size:13px}
+.chip{padding:8px 14px;border-radius:13px;background:#fff;font-size:12.5px;color:var(--ink2)}
+.chip.on{background:var(--ink);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:400;color:var(--ink2);font-size:11.5px;padding:0 10px 10px;text-transform:uppercase;letter-spacing:.4px}
+td{padding:13px 10px;border-top:1px solid var(--line);vertical-align:middle}
+tr td:first-child{border-radius:14px 0 0 14px}
+.tag{font-size:11px;padding:4px 10px;border-radius:9px;display:inline-block}
+.tag.p{background:var(--amber-soft);color:#9A6B0C}
+.tag.a{background:var(--green-soft);color:var(--green)}
+.tag.r{background:#FBE9E7;color:#B8431E}
+.tag.c{background:#EFEBE5;color:var(--ink2)}
+.mini{width:44px;height:44px;border-radius:12px;background:var(--tint);display:grid;place-items:center;overflow:hidden;flex-shrink:0}
+.mini img{width:100%;height:100%;object-fit:cover}
+.flexc{display:flex;align-items:center;gap:11px}
+.overlay{position:fixed;inset:0;background:#1D1B1899;display:grid;place-items:center;padding:20px;z-index:50}
+.modal{background:#fff;border-radius:26px;padding:24px;width:100%;max-width:430px;max-height:90vh;overflow:auto}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;color:var(--ink2);margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:13px;padding:11px 13px;font-size:13px;outline:none;background:var(--card2)}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--orange);background:#fff}
+.note{background:var(--orange-soft);color:#B8431E;border-radius:13px;padding:11px 13px;font-size:12.5px;margin-bottom:14px}
+.note.calm{background:var(--tint);color:var(--ink2)}
+.empty{text-align:center;padding:46px 20px;color:var(--ink2);font-size:13px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:15px;font-size:13px;z-index:80;opacity:0;transition:.25s}
+.toast.on{opacity:1}
+.hero{border-radius:var(--r);background:var(--tint);padding:20px;display:flex;flex-direction:column;justify-content:space-between;min-height:180px}
+@media(max-width:900px){.dashtop{grid-template-columns:1fr!important}.dash2{grid-template-columns:1fr!important}}
+</style>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo"><span class="mark"><i style="height:9px"></i><i style="height:16px"></i><i style="height:22px"></i><i style="height:14px"></i><i style="height:7px"></i></span> Sllr Warehouse</div>
+    <div class="nav" id="nav"></div>
+    <div class="bell">🔔<b id="dot" style="display:none"></b></div>
+    <div class="who"><span>Viewing as</span><select id="role"><option value="sllr">Sllr</option><option value="supplier">Supplier</option></select></div>
+  </div>
+  <div id="view"></div>
+</div>
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SVGP = {
+  fryer:`<svg viewBox="0 0 120 120"><rect x="30" y="34" width="60" height="62" rx="14" fill="#C9C3BB"/><rect x="36" y="42" width="48" height="30" rx="8" fill="#EAE5DE"/><rect x="44" y="78" width="32" height="10" rx="5" fill="#EAE5DE"/><circle cx="60" cy="30" r="7" fill="#A9A29A"/></svg>`,
+  mop:`<svg viewBox="0 0 120 120"><rect x="55" y="16" width="9" height="62" rx="4" fill="#C9C3BB"/><rect x="46" y="10" width="27" height="12" rx="6" fill="#A9A29A"/><path d="M34 80h52l-6 24H40z" fill="#EAE5DE"/><rect x="34" y="76" width="52" height="9" rx="4" fill="#C9C3BB"/></svg>`,
+  massager:`<svg viewBox="0 0 120 120"><path d="M28 52c0-16 14-26 32-26s32 10 32 26-12 22-32 22-32-6-32-22z" fill="#C9C3BB"/><rect x="34" y="66" width="20" height="30" rx="10" fill="#EAE5DE"/><rect x="66" y="66" width="20" height="30" rx="10" fill="#EAE5DE"/></svg>`,
+  blender:`<svg viewBox="0 0 120 120"><path d="M42 22h36l-5 46H47z" fill="#EAE5DE"/><rect x="40" y="68" width="40" height="30" rx="10" fill="#C9C3BB"/><rect x="48" y="76" width="24" height="6" rx="3" fill="#A9A29A"/><rect x="40" y="16" width="40" height="8" rx="4" fill="#A9A29A"/></svg>`,
+  kettle:`<svg viewBox="0 0 120 120"><rect x="36" y="34" width="46" height="52" rx="14" fill="#C9C3BB"/><path d="M82 46c12 2 12 22 0 24" stroke="#A9A29A" stroke-width="7" fill="none"/><rect x="46" y="24" width="26" height="10" rx="5" fill="#EAE5DE"/><rect x="30" y="88" width="58" height="10" rx="5" fill="#EAE5DE"/></svg>`,
+  vacuum:`<svg viewBox="0 0 120 120"><circle cx="56" cy="66" r="28" fill="#C9C3BB"/><circle cx="56" cy="66" r="13" fill="#EAE5DE"/><rect x="74" y="26" width="10" height="44" rx="5" fill="#A9A29A"/><rect x="66" y="20" width="30" height="10" rx="5" fill="#EAE5DE"/></svg>`,
+  fan:`<svg viewBox="0 0 120 120"><circle cx="60" cy="50" r="30" fill="#C9C3BB"/><circle cx="60" cy="50" r="9" fill="#A9A29A"/><rect x="55" y="80" width="10" height="20" rx="4" fill="#EAE5DE"/><rect x="38" y="98" width="44" height="9" rx="4" fill="#C9C3BB"/></svg>`,
+  mixer:`<svg viewBox="0 0 120 120"><path d="M30 34h44a16 16 0 0 1 0 32H52z" fill="#C9C3BB"/><rect x="46" y="66" width="10" height="18" rx="4" fill="#A9A29A"/><path d="M32 84h50l-6 18H38z" fill="#EAE5DE"/></svg>`
+};
+const S = {
+  role:'sllr', tab:'dashboard', q:'', filter:'all', selBin:null, reqId:104,
+  products:[
+    {id:1,name:'Air fryer 5L digital',sku:'SKU-1042',code:'L03-R02-B07',art:'fryer',img:'',total:1200,updated:'2 h ago'},
+    {id:2,name:'Steam mop pro',sku:'SKU-2218',code:'L05-R01-B03',art:'mop',img:'',total:860,updated:'1 d ago'},
+    {id:3,name:'Neck massager 3D',sku:'SKU-3390',code:'L07-R04-B11',art:'massager',img:'',total:340,updated:'5 h ago'},
+    {id:4,name:'Blender 1200W',sku:'SKU-4471',code:'L02-R03-B02',art:'blender',img:'',total:2100,updated:'3 h ago'},
+    {id:5,name:'Electric kettle 1.7L',sku:'SKU-5510',code:'L04-R02-B09',art:'kettle',img:'',total:1540,updated:'6 h ago'},
+    {id:6,name:'Cordless vacuum',sku:'SKU-6023',code:'L06-R05-B01',art:'vacuum',img:'',total:620,updated:'2 d ago'},
+    {id:7,name:'Tower fan 40W',sku:'SKU-7188',code:'L08-R01-B05',art:'fan',img:'',total:980,updated:'9 h ago'},
+    {id:8,name:'Stand mixer 5L',sku:'SKU-8264',code:'L01-R04-B12',art:'mixer',img:'',total:410,updated:'1 d ago'}
+  ],
+  requests:[
+    {id:101,pid:1,qty:450,status:'approved',until:'2026-09-15',note:'Ramadan campaign batch',at:'12 Aug'},
+    {id:102,pid:2,qty:200,status:'approved',until:'2026-08-30',note:'Restock Riyadh hub',at:'14 Aug'},
+    {id:103,pid:4,qty:600,status:'pending',until:'2026-09-01',note:'New creative test',at:'18 Aug'},
+    {id:104,pid:3,qty:500,status:'pending',until:'2026-09-10',note:'Bundle offer',at:'18 Aug'}
+  ]
+};
+const TABS = {sllr:[['dashboard','Dashboard'],['catalog','Catalog'],['requests','My requests'],['layout','Warehouse layout']],
+              supplier:[['dashboard','Dashboard'],['inventory','Inventory'],['approvals','Approvals'],['layout','Warehouse layout']]};
+const P = id => S.products.find(p=>p.id===id);
+const resv = id => S.requests.filter(r=>r.pid===id&&r.status==='approved').reduce((a,r)=>a+r.qty,0);
+const pend = id => S.requests.filter(r=>r.pid===id&&r.status==='pending').reduce((a,r)=>a+r.qty,0);
+const free = id => P(id).total - resv(id) - pend(id);
+const n = v => v.toLocaleString('en-US');
+const sum = f => S.products.reduce((a,p)=>a+f(p.id),0);
+const art = p => p.img ? `<img src="${p.img}" alt="${p.name}">` : SVGP[p.art];
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('on'),2200);}
+function spark(seed){let d='M0 28',x=0;for(let i=0;i<9;i++){const y=6+((Math.sin(seed+i*1.1)+1)/2)*20;x=i*(100/8);d+=` L${x.toFixed(1)} ${y.toFixed(1)}`;}
+  return `<svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="var(--orange)" stroke-width="2.4" stroke-linecap="round"/></svg>`;}
+
+function kpis(){
+  const t=sum(id=>P(id).total),r=sum(resv),pd=sum(pend),f=t-r-pd;
+  return [
+    {ico:'📦',lab:'Total stock',val:n(t)+' <small>units</small>',pill:'<span class="pill">↗ 8 SKUs live</span>',s:1},
+    {ico:'🔒',lab:'Reserved for Sllr',val:n(r)+' <small>units</small>',pill:`<span class="pill">${Math.round(r/t*100)}% of shelf</span>`,s:2},
+    {ico:'⏳',lab:'Pending approval',val:n(pd)+' <small>units</small>',pill:`<span class="pill warn">${S.requests.filter(x=>x.status==='pending').length} requests waiting</span>`,s:3},
+    {ico:'✅',lab:'Free stock',val:n(f)+' <small>units</small>',pill:f<0?'<span class="pill hot">oversold</span>':'<span class="pill">available now</span>',s:4}
+  ];
+}
+function kpiCard(k){return `<div class="card kpi"><div class="arrowbtn">↗</div><div class="ico">${k.ico}</div><div class="lab">${k.lab}</div><div class="val">${k.val}</div>${spark(k.s)}<div>${k.pill}</div></div>`;}
+
+function rackGrid(clickable){
+  const map={};S.products.forEach(p=>{const[l,,b]=p.code.split('-');map[l+b]=p;});
+  let out='';
+  for(let l=1;l<=8;l++){
+    const L='L'+String(l).padStart(2,'0');
+    let bins='';
+    for(let b=1;b<=14;b++){
+      const B='B'+String(b).padStart(2,'0');const p=map[L+B];
+      let cls='bin',lbl=b;
+      if(p){const f=free(p.id)/p.total;cls+=f<=0.25?' low':' used';if(f<=0)cls=' bin used';}
+      if(clickable&&p)cls+=' clickable';
+      if(S.selBin===L+B)cls+=' sel';
+      bins+=`<div class="${cls}" ${p&&clickable?`onclick="pickBin('${L+B}',${p.id})"`:''}>${lbl}</div>`;
+    }
+    out+=`<div class="lineblk"><div class="lt">L: ${l*2-1}-${l*2}</div><div class="bins">${bins}</div></div>`;
+  }
+  return out;
+}
+window.pickBin=(k,pid)=>{S.selBin=S.selBin===k?null:k;render();};
+
+function dashboard(){
+  const t=sum(id=>P(id).total),r=sum(resv),pd=sum(pend),f=t-r-pd;
+  const pc=v=>Math.round(v/t*100);
+  return `
+  <div class="grid dashtop" style="grid-template-columns:300px 1fr 300px;align-items:start">
+    <div class="grid">
+      <div class="hero"><div><h1>Warehouse<br>management</h1><p class="sub">Shared shelf between Sllr and the supplier. Reserve, approve, and watch the free stock move in one place.</p></div>
+      <div style="display:flex;gap:8px;margin-top:16px"><button class="btn primary" onclick="go('${S.role==='sllr'?'catalog':'approvals'}')">${S.role==='sllr'?'Reserve a product':'Review approvals'}</button></div></div>
+      ${kpiCard(kpis()[0])}
+    </div>
+    <div class="grid">
+      <div class="grid" style="grid-template-columns:1fr 1fr">${kpiCard(kpis()[1])}${kpiCard(kpis()[3])}</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="secttl">Warehouse layout</div>
+        <div class="legend"><span><i style="background:var(--orange)"></i>Reserved heavy</span><span><i style="background:var(--amber)"></i>Running low</span><span><i style="background:#F4F1ED"></i>Empty bin</span></div></div>
+        <p class="muted">Bins carrying a product are coloured. Tap one to see what sits there.</p>
+        <div class="lines">${rackGrid(true)}</div>
+        ${S.selBin?binPanel():''}
+      </div>
+    </div>
+    <div class="grid">
+      ${kpiCard(kpis()[2])}
+      <div class="card"><div class="secttl">Shelf split</div><p class="muted" style="margin-bottom:14px">Across all ${S.products.length} SKUs</p>
+        <div class="bar" style="height:10px;margin-bottom:12px"><span style="background:var(--orange);width:${pc(r)}%"></span><span style="background:var(--amber);width:${pc(pd)}%"></span><span style="background:#E3DED7;width:${pc(Math.max(f,0))}%"></span></div>
+        <div class="row"><span class="muted">Reserved for Sllr</span><b>${pc(r)}%</b></div>
+        <div class="row"><span class="muted">Pending approval</span><b>${pc(pd)}%</b></div>
+        <div class="row"><span class="muted">Free</span><b>${pc(Math.max(f,0))}%</b></div>
+      </div>
+      <div class="card soft"><div class="secttl">Summary</div>
+        <div class="row"><span class="muted">SKUs listed</span><b>${S.products.length}</b></div>
+        <div class="row"><span class="muted">Approved requests</span><b>${S.requests.filter(x=>x.status==='approved').length}</b></div>
+        <div class="row"><span class="muted">Waiting on supplier</span><b>${S.requests.filter(x=>x.status==='pending').length}</b></div>
+        <div class="row"><span class="muted">Bins in use</span><b>${S.products.length} / 112</b></div>
+      </div>
+    </div>
+  </div>`;
+}
+function binPanel(){
+  const p=S.products.find(x=>{const[l,,b]=x.code.split('-');return l+b===S.selBin;});
+  if(!p)return'';
+  return `<div class="card soft" style="margin-top:14px"><div class="flexc"><div class="mini">${art(p)}</div>
+    <div style="flex:1"><div class="pname">${p.name}</div><div class="meta">${p.sku} · ${p.code}</div></div>
+    <div style="text-align:right"><div class="muted">free</div><b style="font-size:17px;color:${free(p.id)<0?'var(--orange)':'var(--ink)'}">${n(free(p.id))}</b></div>
+    <button class="btn ghost" onclick="S.selBin=null;render()">Close</button></div></div>`;
+}
+
+function toolbar(extra){
+  return `<div class="toolbar"><div class="search">🔍<input placeholder="Search by name, SKU, or warehouse code" value="${S.q}" oninput="S.q=this.value;render();document.querySelector('.search input').focus()"></div>
+  ${['all','low','reserved'].map(f=>`<button class="chip ${S.filter===f?'on':''}" onclick="S.filter='${f}';render()">${{all:'All',low:'Low free stock',reserved:'Has reservation'}[f]}</button>`).join('')}
+  ${extra||''}</div>`;
+}
+function visible(){
+  const q=S.q.toLowerCase();
+  return S.products.filter(p=>(p.name+p.sku+p.code).toLowerCase().includes(q))
+    .filter(p=>S.filter==='all'||(S.filter==='low'?free(p.id)/p.total<=0.25:resv(p.id)>0));
+}
+function catalog(){
+  const list=visible();
+  return toolbar()+(list.length?`<div class="prodgrid">${list.map(p=>{
+    const r=resv(p.id),pd=pend(p.id),f=free(p.id);
+    return `<div class="pcard"><div class="thumb">${art(p)}<span class="code">${p.code}</span></div>
+      <div><div class="pname">${p.name}</div><div class="meta">${p.sku}</div></div>
+      <div class="bar"><span style="background:var(--orange);width:${r/p.total*100}%"></span><span style="background:var(--amber);width:${pd/p.total*100}%"></span></div>
+      <div class="legrow"><span>Reserved <b style="color:var(--ink)">${n(r)}</b></span><span>Free <b style="color:${f<0?'var(--orange)':'var(--ink)'}">${n(f)}</b></span></div>
+      <button class="btn primary" onclick="openReserve(${p.id})">Reserve stock</button></div>`;}).join('')}</div>`
+    :`<div class="empty">Nothing matches that. Try a different SKU or clear the filter.</div>`);
+}
+function inventory(){
+  const list=visible();
+  return toolbar(`<button class="btn primary" onclick="openAdd()">+ Add product</button>`)+
+  `<div class="card"><table><thead><tr><th>Product</th><th>Warehouse code</th><th>Total</th><th>Reserved</th><th>Pending</th><th>Free</th><th>Updated</th><th></th></tr></thead><tbody>
+  ${list.map(p=>`<tr><td><div class="flexc"><div class="mini">${art(p)}</div><div><div style="font-weight:500">${p.name}</div><div class="meta">${p.sku}</div></div></div></td>
+  <td class="meta">${p.code}</td><td><b>${n(p.total)}</b></td><td style="color:var(--orange)">${n(resv(p.id))}</td><td style="color:#9A6B0C">${n(pend(p.id))}</td>
+  <td><b style="color:${free(p.id)<0?'var(--orange)':'inherit'}">${n(free(p.id))}</b></td><td class="muted">${p.updated}</td>
+  <td><button class="btn ghost" onclick="openStock(${p.id})">Update stock</button></td></tr>`).join('')}
+  </tbody></table>${list.length?'':'<div class="empty">No products match.</div>'}</div>`;
+}
+function requests(){
+  const rows=[...S.requests].reverse();
+  return `<div class="card"><div class="secttl">My reserve requests</div><p class="muted" style="margin-bottom:16px">Approved quantity is what lands in Reserved for Sllr. Nothing is deducted before approval.</p>
+  <table><thead><tr><th>Product</th><th>Qty</th><th>Hold until</th><th>Sent</th><th>Note</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(r=>{const p=P(r.pid);return `<tr><td><div class="flexc"><div class="mini">${art(p)}</div><div><div style="font-weight:500">${p.name}</div><div class="meta">${p.sku} · ${p.code}</div></div></div></td>
+  <td><b>${n(r.qty)}</b></td><td>${r.until}</td><td class="muted">${r.at}</td><td class="muted">${r.note||'—'}</td>
+  <td><span class="tag ${r.status[0]}">${r.status}</span></td></tr>`;}).join('')}
+  </tbody></table></div>`;
+}
+function approvals(){
+  const p1=S.requests.filter(r=>r.status==='pending');
+  return `<div class="card"><div class="secttl">Approvals</div><p class="muted" style="margin-bottom:16px">${p1.length} request${p1.length===1?'':'s'} waiting on you.</p>
+  ${p1.length?p1.map(r=>{const p=P(r.pid),f=free(p.id)+0,over=r.qty>free(p.id)+r.qty?0:0;
+    const avail=p.total-resv(p.id);const short=r.qty-avail;
+    return `<div class="card soft" style="margin-bottom:11px"><div class="flexc">
+      <div class="mini" style="width:54px;height:54px">${art(p)}</div>
+      <div style="flex:1"><div class="pname">${p.name} · ${n(r.qty)} units</div>
+      <div class="meta">${p.sku} · ${p.code}</div>
+      <div style="font-size:12px;margin-top:4px;color:${short>0?'var(--orange)':'var(--ink2)'}">${short>0?`Exceeds free stock by ${n(short)} — partial approve available`:`Free after approval: ${n(avail-r.qty)} · hold until ${r.until}`}</div></div>
+      <button class="btn no" onclick="decide(${r.id},'rejected')">Reject</button>
+      ${short>0?`<button class="btn ok" onclick="decide(${r.id},'approved',${avail})">Approve ${n(avail)}</button>`
+               :`<button class="btn ok" onclick="decide(${r.id},'approved')">Approve</button>`}
+    </div></div>`;}).join(''):`<div class="empty">Nothing waiting. Approved requests show up in the inventory table.</div>`}
+  </div>`;
+}
+function layout(){
+  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <div><div class="secttl">Warehouse layout</div><p class="muted">8 lines · 14 bins per line · 112 bins total</p></div>
+  <div class="legend"><span><i style="background:var(--orange)"></i>Reserved heavy</span><span><i style="background:var(--amber)"></i>Running low</span><span><i style="background:#F4F1ED"></i>Empty bin</span></div></div>
+  <div class="lines" style="padding-top:18px">${rackGrid(true)}</div>${S.selBin?binPanel():''}</div>`;
+}
+
+window.go=t=>{S.tab=t;S.selBin=null;render();};
+window.decide=(id,st,cap)=>{const r=S.requests.find(x=>x.id===id);if(cap!==undefined)r.qty=cap;r.status=st;
+  toast(st==='approved'?`Approved — ${n(r.qty)} units moved to Reserved for Sllr`:'Request rejected');render();};
+
+function modal(html){document.getElementById('modalRoot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeM()"><div class="modal">${html}</div></div>`;}
+window.closeM=()=>document.getElementById('modalRoot').innerHTML='';
+window.openReserve=id=>{const p=P(id);
+  modal(`<div class="flexc" style="margin-bottom:16px"><div class="mini" style="width:54px;height:54px">${art(p)}</div>
+  <div><div class="pname">Reserve ${p.name}</div><div class="meta">${p.sku} · ${p.code}</div></div></div>
+  <div class="field"><label>Quantity</label><input id="q" type="number" min="1" value="100" oninput="prev(${id})"></div>
+  <div class="field"><label>Hold until</label><input id="u" type="date" value="2026-09-30"></div>
+  <div class="field"><label>Note to supplier</label><textarea id="nt" rows="2" placeholder="What is this batch for?"></textarea></div>
+  <div id="pv" class="note calm"></div><div id="err" style="color:#B8431E;font-size:12px;margin-bottom:10px"></div>
+  <div style="display:flex;gap:9px"><button class="btn ghost" style="flex:1" onclick="closeM()">Cancel</button>
+  <button class="btn primary" style="flex:1" onclick="sendReq(${id})">Send request</button></div>`);
+  prev(id);};
+window.prev=id=>{const q=+document.getElementById('q').value||0,f=free(id);
+  document.getElementById('pv').innerHTML=`Free now <b>${n(f)}</b> → free after approval <b>${n(f-q)}</b>`;
+  document.getElementById('err').textContent='';};
+window.sendReq=id=>{const q=+document.getElementById('q').value;
+  if(!q||q<1){document.getElementById('err').textContent='Enter a quantity of at least 1.';return;}
+  S.requests.push({id:++S.reqId,pid:id,qty:q,status:'pending',until:document.getElementById('u').value||'—',note:document.getElementById('nt').value.trim(),at:'today'});
+  closeM();document.getElementById('dot').style.display='block';toast('Request sent — waiting on supplier approval');S.tab='requests';render();};
+window.openStock=id=>{const p=P(id);
+  modal(`<div class="pname" style="margin-bottom:4px">Update stock</div><p class="muted" style="margin-bottom:16px">${p.name} · ${p.sku}</p>
+  <div class="field"><label>Total units on shelf</label><input id="t" type="number" value="${p.total}"></div>
+  <div class="field"><label>Warehouse code</label><input id="c" value="${p.code}"></div>
+  <div class="field"><label>Image URL (optional)</label><input id="im" value="${p.img}" placeholder="https://…"></div>
+  <div class="note calm">Reserved ${n(resv(id))} · pending ${n(pend(id))}. Total cannot go below what is already reserved.</div>
+  <div id="err" style="color:#B8431E;font-size:12px;margin-bottom:10px"></div>
+  <div style="display:flex;gap:9px"><button class="btn ghost" style="flex:1" onclick="closeM()">Cancel</button>
+  <button class="btn primary" style="flex:1" onclick="saveStock(${id})">Save</button></div>`);};
+window.saveStock=id=>{const p=P(id),t=+document.getElementById('t').value;
+  if(!t||t<resv(id)){document.getElementById('err').textContent=`Enter a number of at least ${n(resv(id))}.`;return;}
+  p.total=t;p.code=document.getElementById('c').value.trim()||p.code;p.img=document.getElementById('im').value.trim();p.updated='just now';
+  closeM();toast('Stock updated');render();};
+window.openAdd=()=>{modal(`<div class="pname" style="margin-bottom:16px">Add product</div>
+  <div class="field"><label>Product name</label><input id="nm" placeholder="Cordless kettle 1.7L"></div>
+  <div class="field"><label>SKU</label><input id="sk" placeholder="SKU-9001"></div>
+  <div class="field"><label>Warehouse code</label><input id="cd" placeholder="L03-R01-B04"></div>
+  <div class="field"><label>Total units</label><input id="tt" type="number" placeholder="500"></div>
+  <div class="field"><label>Image URL (optional)</label><input id="ig" placeholder="https://…"></div>
+  <div id="err" style="color:#B8431E;font-size:12px;margin-bottom:10px"></div>
+  <div style="display:flex;gap:9px"><button class="btn ghost" style="flex:1" onclick="closeM()">Cancel</button>
+  <button class="btn primary" style="flex:1" onclick="saveNew()">Add product</button></div>`);};
+window.saveNew=()=>{const g=i=>document.getElementById(i).value.trim();
+  if(!g('nm')||!g('sk')||!g('cd')||!+g('tt')){document.getElementById('err').textContent='Name, SKU, warehouse code, and total units are all required.';return;}
+  const keys=Object.keys(SVGP);
+  S.products.push({id:Date.now(),name:g('nm'),sku:g('sk'),code:g('cd').toUpperCase(),art:keys[S.products.length%keys.length],img:g('ig'),total:+g('tt'),updated:'just now'});
+  closeM();toast('Product added to the catalog');render();};
+
+document.getElementById('role').onchange=e=>{S.role=e.target.value;S.tab='dashboard';S.selBin=null;render();};
+function render(){
+  const tabs=TABS[S.role];
+  if(!tabs.some(t=>t[0]===S.tab))S.tab='dashboard';
+  document.getElementById('nav').innerHTML=tabs.map(([k,l])=>`<button class="${S.tab===k?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+  document.getElementById('view').innerHTML={dashboard,catalog,inventory,requests,approvals,layout}[S.tab]();
+}
+render();
+</script>

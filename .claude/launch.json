@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sllr-warehouse-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "4640"],
+      "port": 4640,
+      "autoPort": false,
+      "url": "http://localhost:4640"
+    }
+  ]
+}
