@@ -18,6 +18,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Local verification scripts, not part of the app.
+      ".devtools/**",
     ],
   },
 ];
