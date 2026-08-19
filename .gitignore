@@ -8,3 +8,9 @@ out
 next-env.d.ts
 *.tsbuildinfo
 .vercel
+
+# local verification scripts, not part of the app
+.devtools
+
+# supabase CLI scratch
+supabase/.temp

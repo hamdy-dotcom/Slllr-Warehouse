@@ -1,71 +1,35 @@
 /**
- * App-level shapes that mirror `docs/schema.sql`.
- *
- * Once the env vars exist, `npm run types` regenerates
- * `src/lib/database.types.ts` from the live project; these aliases stay the
- * single import point so components never reach into the generated file.
+ * App-level shapes, derived from the generated `database.types.ts` so a schema
+ * change shows up as a type error rather than a runtime surprise.
  */
+import type { Database } from "@/lib/database.types";
 
-export type AppRole = "sllr" | "supplier" | "admin";
+type Tables = Database["public"]["Tables"];
+type Views = Database["public"]["Views"];
 
-export type RequestStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "cancelled"
-  | "consumed";
+export type AppRole = Database["public"]["Enums"]["app_role"];
+export type RequestStatus = Database["public"]["Enums"]["request_status"];
 
-export type Profile = {
-  id: string;
-  full_name: string | null;
-  role: AppRole;
-  supplier_id: string | null;
-  created_at: string;
-};
+export type Profile = Tables["profiles"]["Row"];
+export type Supplier = Tables["suppliers"]["Row"];
+export type Product = Tables["products"]["Row"];
+export type ReserveRequest = Tables["reserve_requests"]["Row"];
 
-export type Supplier = {
-  id: string;
-  name: string;
-  contact: string | null;
-  created_at: string;
-};
-
-export type Product = {
-  id: string;
-  supplier_id: string;
-  name: string;
-  sku: string;
-  warehouse_code: string;
-  image_url: string | null;
-  total_qty: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-};
+/** Postgres cannot prove a view column is NOT NULL, so every one comes back
+ *  nullable. The data layer is the single place that normalises them. */
+export type ProductStockRow = Views["product_stock"]["Row"];
 
 /**
- * The `product_stock` view. `reserved_qty` is always
- * `sum(qty_approved) where status = 'approved'` — never stored, never edited.
+ * A row of `product_stock`, normalised.
+ *
+ * `reserved_qty` is always `sum(qty_approved) where status = 'approved'` —
+ * never stored, never edited. `free_qty` is `total - reserved - pending` and
+ * is allowed to go negative.
  */
 export type ProductStock = Product & {
   reserved_qty: number;
   pending_qty: number;
   free_qty: number;
-};
-
-export type ReserveRequest = {
-  id: string;
-  product_id: string;
-  requested_by: string;
-  qty_requested: number;
-  qty_approved: number | null;
-  status: RequestStatus;
-  hold_until: string | null;
-  note: string | null;
-  decided_by: string | null;
-  decided_at: string | null;
-  decision_note: string | null;
-  created_at: string;
 };
 
 /** A request joined to the product it sits against. */
