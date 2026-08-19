@@ -10,8 +10,10 @@ import { n } from "@/lib/format";
 import type { Bin, BinTone } from "@/lib/warehouse";
 
 const toneStyles: Record<BinTone, string> = {
+  // Occupied and healthy reads as `tint`, so a stocked bin is never mistaken
+  // for the `bin-empty` of one holding nothing.
   empty: "bg-bin-empty text-ink-3",
-  neutral: "bg-bin-empty text-ink-3",
+  neutral: "bg-tint text-ink-3",
   low: "bg-amber text-[#5B3F04]",
   heavy: "bg-orange text-white",
 };
@@ -20,8 +22,9 @@ export function BinGrid({ grid }: { grid: Bin[][] }) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const selectedBin =
-    grid.flat().find((bin) => bin.key === selected && bin.products.length > 0) ??
-    null;
+    grid
+      .flat()
+      .find((bin) => bin.key === selected && bin.products.length > 0) ?? null;
 
   return (
     <>
@@ -58,7 +61,8 @@ export function BinGrid({ grid }: { grid: Bin[][] }) {
                       occupied
                         ? "cursor-pointer hover:scale-[1.18]"
                         : "cursor-default",
-                      selected === bin.key && "outline-2 outline-offset-1 outline-ink",
+                      selected === bin.key &&
+                        "outline-2 outline-offset-1 outline-ink",
                     )}
                   >
                     {bin.bin}
@@ -116,21 +120,34 @@ function BinPanel({ bin, onClose }: { bin: Bin; onClose: () => void }) {
   );
 }
 
+const LEGEND: { tone: BinTone; label: string }[] = [
+  { tone: "heavy", label: "Reserved heavy" },
+  { tone: "low", label: "Running low" },
+  { tone: "neutral", label: "Stocked" },
+  { tone: "empty", label: "Empty bin" },
+];
+
+const swatch: Record<BinTone, string> = {
+  heavy: "bg-orange",
+  low: "bg-amber",
+  neutral: "bg-tint",
+  empty: "bg-bin-empty",
+};
+
 export function BinLegend() {
   return (
     <div className="flex flex-wrap items-center gap-4 text-[12px] text-ink-2">
-      <span>
-        <i className="mr-[6px] inline-block h-[5px] w-[22px] rounded-[3px] bg-orange align-middle" />
-        Reserved heavy
-      </span>
-      <span>
-        <i className="mr-[6px] inline-block h-[5px] w-[22px] rounded-[3px] bg-amber align-middle" />
-        Running low
-      </span>
-      <span>
-        <i className="mr-[6px] inline-block h-[5px] w-[22px] rounded-[3px] bg-bin-empty align-middle" />
-        Empty bin
-      </span>
+      {LEGEND.map((entry) => (
+        <span key={entry.tone}>
+          <i
+            className={cn(
+              "mr-[6px] inline-block h-[5px] w-[22px] rounded-[3px] align-middle",
+              swatch[entry.tone],
+            )}
+          />
+          {entry.label}
+        </span>
+      ))}
     </div>
   );
 }

@@ -10,7 +10,7 @@ Visual source of truth. The working reference is `sllr-warehouse.html` in this f
 | `shell` | `#FAF6F1 → #F3EEE8` | outer container, subtle vertical fade |
 | `card` | `#FFFFFF` | all raised cards |
 | `card-soft` | `#FBF8F5` | secondary / nested cards |
-| `tint` | `#F7EFE9` | image tiles, small round buttons |
+| `tint` | `#F7EFE9` | image tiles, small round buttons, stocked warehouse bin |
 | `line` | `#E8E2DA` | hairlines, input borders |
 | `ink` | `#1D1B18` | primary text |
 | `ink-2` | `#7C766D` | labels, secondary text |
@@ -58,7 +58,16 @@ Sentence case everywhere. No ALL CAPS except table headers.
 
 **Stock bar** — 7px tall, radius 5px, segments in the order orange → amber → track.
 
-**Bin grid** — 8 line blocks, each 2 columns × 14 bins. Bin is 19px tall, radius 6px, 9.5px numeral. Orange when free ≤ 0, amber when free ≤ 25% of total, `bin-empty` otherwise. Occupied bins scale to 1.18 on hover and take a 2px `ink` outline when selected.
+**Bin grid** — 8 line blocks, each 2 columns × 14 bins. Bin is 19px tall, radius 6px, 9.5px numeral. Four states:
+
+| Bin | Fill | Numeral |
+|---|---|---|
+| Free ≤ 0 | `orange` | white |
+| Free ≤ 25% of total | `amber` | `#5B3F04` |
+| Occupied and healthy | `tint` | `ink-3` |
+| Holds nothing | `bin-empty` | `ink-3` |
+
+A stocked bin has to be legible against an empty one, so the two neutrals are kept a step apart rather than sharing `bin-empty`. Occupied bins scale to 1.18 on hover and take a 2px `ink` outline when selected. The legend carries all four states in that order.
 
 **Tags** — 11px, radius 9px, padding 4px 10px. pending = amber-soft, approved = green-soft, rejected = `#FBE9E7` / `#B8431E`, consumed = `#EFEBE5` / `ink-2`.
 
