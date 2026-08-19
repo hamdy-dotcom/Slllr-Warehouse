@@ -92,3 +92,43 @@ export function availableToGrant(product: ProductStock): number {
 export function shortfall(request: RequestWithStock): number {
   return request.qty_requested - availableToGrant(request.product);
 }
+
+export type RequestCounts = {
+  pending: number;
+  approved: number;
+  rejected: number;
+  cancelled: number;
+  consumed: number;
+  total: number;
+};
+
+/**
+ * Request tallies for the dashboard. RLS scopes this the way each role needs
+ * it: a Sllr user counts their own, a supplier counts what sits against its
+ * own products.
+ */
+export async function requestCounts(): Promise<RequestCounts> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reserve_requests")
+    .select("status");
+
+  if (error) throw new Error(`Could not count requests: ${error.message}`);
+
+  const counts: RequestCounts = {
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    cancelled: 0,
+    consumed: 0,
+    total: 0,
+  };
+
+  for (const row of data ?? []) {
+    counts[row.status] += 1;
+    counts.total += 1;
+  }
+
+  return counts;
+}
