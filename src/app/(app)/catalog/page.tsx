@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ProductCard } from "@/components/product-card";
+import { ReserveButton } from "./reserve-dialog";
 import { ShelfToolbar } from "@/components/shelf-toolbar";
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { listProductStock } from "@/lib/data/products";
@@ -47,7 +48,11 @@ export default async function CatalogPage({
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-[14px]">
           {visible.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              action={<ReserveButton product={product} />}
+            />
           ))}
         </div>
       )}

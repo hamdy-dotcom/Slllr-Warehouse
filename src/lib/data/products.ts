@@ -8,7 +8,7 @@ import type { ProductStock, ProductStockRow } from "@/lib/types";
  * column is NOT NULL. Every one of them is backed by a NOT NULL base column or
  * a `coalesce`, so this is the one place that asserts them back.
  */
-function normalise(row: ProductStockRow): ProductStock {
+export function normaliseStock(row: ProductStockRow): ProductStock {
   return {
     id: row.id as string,
     supplier_id: row.supplier_id as string,
@@ -41,7 +41,7 @@ export async function listProductStock({
   const { data, error } = await query;
   if (error) throw new Error(`Could not load the shelf: ${error.message}`);
 
-  return (data ?? []).map(normalise);
+  return (data ?? []).map(normaliseStock);
 }
 
 export async function getProductStock(
@@ -57,5 +57,5 @@ export async function getProductStock(
 
   if (error) throw new Error(`Could not load the product: ${error.message}`);
 
-  return data ? normalise(data) : null;
+  return data ? normaliseStock(data) : null;
 }
