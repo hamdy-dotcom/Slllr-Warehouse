@@ -293,6 +293,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      bulk_update_stock: {
+        Args: { p_rows: Json }
+        Returns: {
+          message: string
+          ok: boolean
+          sku: string
+        }[]
+      }
       consume_reserve_request: {
         Args: { p_request_id: string }
         Returns: {

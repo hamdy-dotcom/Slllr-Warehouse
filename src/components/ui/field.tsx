@@ -72,3 +72,30 @@ export function FieldError({ children }: { children?: React.ReactNode }) {
     </p>
   );
 }
+
+/** Checkbox on its own row, with the label to the right of the box. */
+export function CheckField({
+  label,
+  hint,
+  ...props
+}: React.ComponentProps<"input"> & { label: string; hint?: string }) {
+  const id = props.id ?? props.name;
+
+  return (
+    <div className="mb-[13px]">
+      <label
+        htmlFor={id}
+        className="flex cursor-pointer items-center gap-[9px] text-body"
+      >
+        <input
+          id={id}
+          type="checkbox"
+          className="size-4 shrink-0 accent-orange"
+          {...props}
+        />
+        {label}
+      </label>
+      {hint ? <p className="mt-[6px] text-meta text-ink-3">{hint}</p> : null}
+    </div>
+  );
+}

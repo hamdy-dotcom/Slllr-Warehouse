@@ -6,11 +6,14 @@ import { requireSupplier } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-/** `L03-R02-B07` — line 01-08, rack 01-99, bin 01-14. */
-const WAREHOUSE_CODE = /^L(0[1-8])-R(\d{2})-B(0[1-9]|1[0-4])$/;
+/**
+ * `L03-R02-B07` — line, rack, bin. Any two-digit line or bin is accepted; the
+ * warehouse page lists anything outside the 8 x 14 grid under "Off the grid"
+ * rather than dropping it.
+ */
+const WAREHOUSE_CODE = /^L\d{2}-R\d{2}-B\d{2}$/;
 
-const CODE_HELP =
-  "Use the line-rack-bin format, for example L03-R02-B07. Lines run 01 to 08 and bins 01 to 14.";
+const CODE_HELP = "Use the line-rack-bin format, for example L03-R02-B07.";
 
 export type ProductFormState = {
   error?: string;
@@ -28,6 +31,7 @@ export type ProductFormState = {
     sku: string;
     warehouse_code: string;
     total_qty: string;
+    is_active: boolean;
   };
 };
 
@@ -37,6 +41,7 @@ function submitted(formData: FormData): ProductFormState["values"] {
     sku: String(formData.get("sku") ?? ""),
     warehouse_code: String(formData.get("warehouse_code") ?? ""),
     total_qty: String(formData.get("total_qty") ?? ""),
+    is_active: formData.get("is_active") === "on",
   };
 }
 
@@ -45,6 +50,7 @@ type Parsed = {
   sku: string;
   warehouse_code: string;
   total_qty: number;
+  is_active: boolean;
 };
 
 function parse(formData: FormData): Parsed | string {
@@ -66,7 +72,13 @@ function parse(formData: FormData): Parsed | string {
     return "Enter the total units as a whole number of at least 0.";
   }
 
-  return { name, sku, warehouse_code, total_qty };
+  return {
+    name,
+    sku,
+    warehouse_code,
+    total_qty,
+    is_active: formData.get("is_active") === "on",
+  };
 }
 
 /** Turns a Postgres error into something that says what to do next. */
@@ -76,7 +88,14 @@ function explain(message: string): string {
     return `Enter a number of at least ${belowReserved[1]} — that much is already reserved.`;
   }
 
-  if (message.includes("products_supplier_id_sku_key")) {
+  if (message.includes('policy for table "stock_movements"')) {
+    return "Stock changes are not being recorded. stock_movements has row level security on with no insert policy, and guard_total_qty is not security definer.";
+  }
+
+  if (
+    message.includes("products_supplier_id_sku_key") ||
+    (message.includes("duplicate key") && message.includes("sku"))
+  ) {
     return "That SKU is already on your shelf. Use a different one.";
   }
 
@@ -130,10 +149,31 @@ export async function updateProduct(
   await requireSupplier();
   const supabase = await createClient();
 
-  const { error } = await supabase.from("products").update(parsed).eq("id", id);
+  const { data: before } = await supabase
+    .from("products")
+    .select("total_qty")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!before) return { error: "That product is no longer on the shelf." };
+
+  const { total_qty, ...columns } = parsed;
+
+  // Everything except the quantity is a plain update — the guard trigger only
+  // writes a movement row when total_qty actually moves, and that write needs
+  // the security-definer RPC below.
+  const { error } = await supabase
+    .from("products")
+    .update(columns)
+    .eq("id", id);
 
   if (error) {
     return { error: explain(error.message), values: submitted(formData) };
+  }
+
+  if (total_qty !== before.total_qty) {
+    const failure = await setTotalQty(columns.sku, total_qty);
+    if (failure) return { error: failure, values: submitted(formData) };
   }
 
   revalidatePath("/inventory");
@@ -223,4 +263,124 @@ export async function uploadProductImage(
   revalidatePath("/approvals");
 
   return { savedAt: Date.now() };
+}
+
+/**
+ * Every `total_qty` change goes through `bulk_update_stock`.
+ *
+ * A direct UPDATE cannot work: the `products_guard` trigger writes the audit
+ * row into `stock_movements`, that table has RLS on with a select policy only,
+ * and the trigger is not security definer — so the write is refused as
+ * "new row violates row-level security policy". The RPC is security definer,
+ * so it is the one path that can move a quantity and record the movement.
+ */
+async function setTotalQty(
+  sku: string,
+  total_qty: number,
+  warehouse_code?: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("bulk_update_stock", {
+    p_rows: [
+      warehouse_code ? { sku, total_qty, warehouse_code } : { sku, total_qty },
+    ],
+  });
+
+  if (error) return explain(error.message);
+
+  const row = data?.[0];
+  if (!row) return "The shelf did not answer. Try again.";
+  if (!row.ok) return row.message;
+
+  return null;
+}
+
+/** The inline quantity box on an inventory row. */
+export async function updateStockQty(
+  _previous: StockQtyState,
+  formData: FormData,
+): Promise<StockQtyState> {
+  const sku = String(formData.get("sku") ?? "");
+  const raw = String(formData.get("total_qty") ?? "").trim();
+
+  if (!sku) return { error: "That product is no longer on the shelf." };
+
+  const total_qty = Number(raw);
+  if (raw === "" || !Number.isInteger(total_qty) || total_qty < 0) {
+    return { error: "Enter the total units as a whole number of at least 0." };
+  }
+
+  await requireSupplier();
+
+  const failure = await setTotalQty(sku, total_qty);
+  if (failure) return { error: failure };
+
+  revalidatePath("/inventory");
+  revalidatePath("/catalog");
+  revalidatePath("/warehouse");
+  revalidatePath("/dashboard");
+
+  return { savedAt: Date.now(), total_qty };
+}
+
+export type StockQtyState = {
+  error?: string;
+  savedAt?: number;
+  /** What the row actually holds now, so the input can settle on the truth. */
+  total_qty?: number;
+};
+
+export type BulkRow = {
+  sku: string;
+  total_qty: number;
+  warehouse_code?: string;
+};
+
+export type BulkResult = { sku: string; ok: boolean; message: string };
+
+export type BulkState = {
+  error?: string;
+  savedAt?: number;
+  results?: BulkResult[];
+};
+
+/**
+ * Commits a parsed CSV through `bulk_update_stock`, which reports per row
+ * rather than failing the whole batch — one bad SKU does not cost the others.
+ */
+export async function bulkUpdateStock(
+  _previous: BulkState,
+  formData: FormData,
+): Promise<BulkState> {
+  const raw = String(formData.get("rows") ?? "");
+
+  let rows: BulkRow[];
+  try {
+    rows = JSON.parse(raw);
+  } catch {
+    return { error: "Could not read those rows. Paste the CSV again." };
+  }
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return {
+      error: "There is nothing to update. Paste or upload a CSV first.",
+    };
+  }
+
+  await requireSupplier();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("bulk_update_stock", {
+    p_rows: rows,
+  });
+
+  if (error) return { error: explain(error.message) };
+
+  revalidatePath("/inventory");
+  revalidatePath("/catalog");
+  revalidatePath("/warehouse");
+  revalidatePath("/dashboard");
+
+  return { savedAt: Date.now(), results: data ?? [] };
 }

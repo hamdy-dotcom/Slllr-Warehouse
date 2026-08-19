@@ -7,6 +7,8 @@ import { requireSupplier } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
 import { applyShelfFilter, isShelfFilter, type ShelfFilter } from "@/lib/shelf";
 import { n, relativeTime } from "@/lib/format";
+import { BulkUpdateButton } from "./bulk-dialog";
+import { InlineQty } from "./inline-qty";
 import { AddProductButton, EditProductButton } from "./product-dialog";
 
 export const metadata: Metadata = { title: "Inventory · Sllr warehouse" };
@@ -39,6 +41,7 @@ export default async function InventoryPage({
       </div>
 
       <ShelfToolbar q={q} filter={active}>
+        <BulkUpdateButton shelf={shelf} />
         <AddProductButton />
       </ShelfToolbar>
 
@@ -76,7 +79,14 @@ export default async function InventoryPage({
                           alt={product.name}
                         />
                         <div>
-                          <div className="font-medium">{product.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{product.name}</span>
+                            {product.is_active ? null : (
+                              <span className="rounded-pill bg-neutral-soft px-[10px] py-[4px] text-meta text-ink-2">
+                                unlisted
+                              </span>
+                            )}
+                          </div>
                           <div className="font-mono text-meta text-ink-3">
                             {product.sku}
                           </div>
@@ -87,7 +97,11 @@ export default async function InventoryPage({
                       {product.warehouse_code}
                     </td>
                     <td className={TD}>
-                      <b className="font-medium">{n(product.total_qty)}</b>
+                      <InlineQty
+                        sku={product.sku}
+                        totalQty={product.total_qty}
+                        reservedQty={product.reserved_qty}
+                      />
                     </td>
                     <td className={`${TD} text-orange`}>
                       {n(product.reserved_qty)}

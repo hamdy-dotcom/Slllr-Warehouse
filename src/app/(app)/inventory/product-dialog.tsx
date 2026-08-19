@@ -4,7 +4,13 @@ import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, Input, Note } from "@/components/ui/field";
+import {
+  CheckField,
+  Field,
+  FieldError,
+  Input,
+  Note,
+} from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { Muted } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
@@ -41,14 +47,14 @@ export function EditProductButton({ product }: { product: ProductStock }) {
   return (
     <>
       <Button variant="ghost" onClick={() => setOpen(true)}>
-        Update stock
+        Edit
       </Button>
       {open ? (
         <ProductDialog
           mode="edit"
           product={product}
           onClose={() => setOpen(false)}
-          toastMessage="Stock updated"
+          toastMessage="Product updated"
         />
       ) : null}
     </>
@@ -125,7 +131,7 @@ function ProductDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        {mode === "add" ? "Add product" : "Update stock"}
+        {mode === "add" ? "Add product" : "Edit product"}
       </div>
       <Muted className="mb-[16px]">
         {product
@@ -188,6 +194,13 @@ function ProductDialog({
           productName={product?.name ?? "New product"}
           onPick={setPicked}
           onError={setImageError}
+        />
+
+        <CheckField
+          name="is_active"
+          label="Listed in the Sllr catalog"
+          hint="Unlisting keeps the row and its stock; it only hides the product from Sllr."
+          defaultChecked={v?.is_active ?? product?.is_active ?? true}
         />
 
         {product ? (
