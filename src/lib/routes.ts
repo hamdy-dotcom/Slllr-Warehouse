@@ -8,12 +8,14 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/catalog", label: "Catalog" },
     { href: "/requests", label: "My requests" },
+    { href: "/wallet", label: "Wallet" },
     { href: "/warehouse", label: "Warehouse layout" },
   ],
   supplier: [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/inventory", label: "Inventory" },
     { href: "/movements", label: "Movements" },
+    { href: "/wallet", label: "Wallet" },
     { href: "/approvals", label: "Approvals" },
     { href: "/warehouse", label: "Warehouse layout" },
   ],
@@ -22,6 +24,7 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/catalog", label: "Catalog" },
     { href: "/inventory", label: "Inventory" },
     { href: "/movements", label: "Movements" },
+    { href: "/wallet", label: "Wallet" },
     { href: "/approvals", label: "Approvals" },
     { href: "/warehouse", label: "Warehouse layout" },
   ],
@@ -35,6 +38,7 @@ const ACCESS: Record<string, readonly AppRole[]> = {
   "/inventory": ["supplier", "admin"],
   "/movements": ["supplier", "admin"],
   "/approvals": ["supplier", "admin"],
+  "/wallet": ["sllr", "supplier", "admin"],
   "/warehouse": ["sllr", "supplier", "admin"],
 };
 
