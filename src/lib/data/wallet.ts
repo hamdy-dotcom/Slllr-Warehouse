@@ -27,6 +27,12 @@ export type SupplierOption = { id: string; name: string };
  * it straight at the API gets only its own row. The filter here is kept as a
  * second lock rather than the only one — and it is what makes a Sllr user's
  * supplier picker work, since they can see them all.
+ *
+ * That clause admits `auth.uid() is null`, which is true for the service role
+ * and equally true for an unauthenticated caller. Anonymous reads come back
+ * empty only because the tables underneath refuse them and the view runs
+ * security_invoker. Turning security_invoker off would hand every wallet to
+ * anyone holding the public anon key.
  */
 export async function listWallets(profile: SessionProfile): Promise<Wallet[]> {
   const supabase = await createClient();

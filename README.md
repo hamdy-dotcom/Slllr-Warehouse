@@ -267,10 +267,16 @@ and checking they stayed invisible, not merely by counting a table that only
 had one supplier's rows in it. Writes are scoped too: a supplier updating or
 deleting another supplier's product matches no rows.
 
-One consequence of `supplier_wallet` filtering on `my_role()` / `my_supplier()`
-is that the service role sees **zero** rows, because it has no `auth.uid()`.
-Anything server-side that needs the whole table — a report, a cron job — has to
-read the underlying tables instead.
+`supplier_wallet` filters on `my_role()` / `my_supplier()` / `auth.uid() is
+null`, so a supplier gets its own row, Sllr and admin get all of them, and the
+service role gets all of them again.
+
+That last branch is true for an **unauthenticated** caller as well as the
+service role, so it is worth knowing why an anonymous read is still empty: the
+tables the view is built on refuse an anonymous reader, and the view reaches
+them with `security_invoker` on. Verified — anon gets 0 of 3 suppliers, 0 of 6
+settlements, 0 of 100 products. Turn `security_invoker` off and that branch
+would hand every supplier's balance to anyone holding the public anon key.
 
 ### Layout toggle
 
