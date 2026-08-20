@@ -185,6 +185,44 @@ comes from which form you are in, so a file of inbound rows cannot quietly
 contain an outbound one. Releases are excluded from bulk, because each one has
 to name a request and a spreadsheet cannot make that choice.
 
+### Wallet and settlement
+
+Released stock is not owed for yet. It sits **in progress** until Sllr confirms
+each unit as delivered or returned, which is what `/wallet` and `/daily` do.
+
+| Figure | Meaning |
+|---|---|
+| In progress | released, not yet confirmed. Not payable. |
+| Delivered | confirmed taken. This is what is billed. |
+| Returned | sent back to the supplier. Puts units on the shelf; never billed. |
+| Balance owed | `delivered_value − paid_total` |
+
+A settlement is allocated FIFO across that product's release lines, so it
+takes its cost from the oldest unsettled release rather than from today's
+product cost. `/daily` is the same thing for a whole day at once: paste
+`sku,kind,qty,occurred_on,reference` and every row shows what the SKU had in
+progress before and after before anything is committed.
+
+Sllr records; a supplier sees only its own wallet, read-only. That scoping is
+applied in `src/lib/data/wallet.ts` because `supplier_wallet` is **not** scoped
+by the database — a supplier querying the view directly gets every row.
+
+**Known issue in `record_settlements`.** It allocates FIFO and commits before
+deciding a row asked for more than is in progress, so a row it reports as
+refused has already settled everything available. Reproduced from a clean
+state: `[{sku: "SKU-1002", kind: "delivered", qty: 999}]` against 19 in
+progress returned `ok: false, "Only 19 units are in progress for this SKU"` and
+still created two settlement rows totalling 19. Until the function rolls back,
+`recordSettlements` checks every row against `in_progress_qty` first and never
+lets an over-delivery reach it.
+
+**Known issue in `guard_total_qty`.** Its audit insert passes `direction` as
+text, so any direct `products.total_qty` update now fails with
+`column "direction" is of type movement_direction but expression is of type
+text`. That takes `bulk_update_stock` with it, and with it the inline quantity
+editor, the quantity field in the product dialog, and the inventory bulk CSV.
+`record_stock_movements` is unaffected.
+
 ### Layout toggle
 
 The catalog and the inventory each offer a grid and a rows view. Both carry the

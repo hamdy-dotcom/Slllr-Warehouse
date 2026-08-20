@@ -9,6 +9,7 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/catalog", label: "Catalog" },
     { href: "/requests", label: "My requests" },
     { href: "/wallet", label: "Wallet" },
+    { href: "/daily", label: "Daily update" },
     { href: "/warehouse", label: "Warehouse layout" },
   ],
   supplier: [
@@ -22,6 +23,7 @@ export const NAV: Record<AppRole, NavItem[]> = {
   admin: [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/catalog", label: "Catalog" },
+    { href: "/daily", label: "Daily update" },
     { href: "/inventory", label: "Inventory" },
     { href: "/movements", label: "Movements" },
     { href: "/wallet", label: "Wallet" },
@@ -39,6 +41,7 @@ const ACCESS: Record<string, readonly AppRole[]> = {
   "/movements": ["supplier", "admin"],
   "/approvals": ["supplier", "admin"],
   "/wallet": ["sllr", "supplier", "admin"],
+  "/daily": ["sllr", "admin"],
   "/warehouse": ["sllr", "supplier", "admin"],
 };
 
@@ -50,7 +53,11 @@ export const HOME = "/dashboard";
  * instead of bouncing to the dashboard.
  */
 const COUNTERPART: Partial<Record<AppRole, Record<string, string>>> = {
-  supplier: { "/catalog": "/inventory", "/requests": "/approvals" },
+  supplier: {
+    "/catalog": "/inventory",
+    "/requests": "/approvals",
+    "/daily": "/wallet",
+  },
   sllr: {
     "/inventory": "/catalog",
     "/movements": "/catalog",
