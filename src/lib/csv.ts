@@ -1,13 +1,20 @@
+import { parseCost } from "@/lib/money";
+
 /**
- * Just enough CSV for the bulk stock update: `sku,total_qty,warehouse_code`
- * with the last column optional. Handles quoted fields and CRLF, which is what
- * a spreadsheet export produces.
+ * Just enough CSV for the bulk stock update:
+ * `sku,total_qty,warehouse_code,unit_cost` with the last two optional.
+ * Handles quoted fields and CRLF, which is what a spreadsheet export produces.
+ *
+ * A blank `unit_cost` cell leaves the price alone; typing `-` clears it back
+ * to not priced, because an empty cell cannot mean both things.
  */
 
 export type CsvRow = {
   sku: string;
   total_qty: number;
   warehouse_code?: string;
+  /** number sets a price, null clears it, undefined leaves it as it was. */
+  unit_cost?: number | null;
 };
 
 export type CsvProblem = { line: number; message: string };
@@ -57,6 +64,10 @@ const HEADER_ALIASES: Record<string, keyof CsvRow> = {
   warehouse_code: "warehouse_code",
   "warehouse code": "warehouse_code",
   code: "warehouse_code",
+  unit_cost: "unit_cost",
+  "unit cost": "unit_cost",
+  cost: "unit_cost",
+  price: "unit_cost",
 };
 
 export function parseStockCsv(text: string): CsvParse {
@@ -74,7 +85,12 @@ export function parseStockCsv(text: string): CsvParse {
   const first = splitLine(lines[0]).map((cell) => cell.toLowerCase());
   const looksLikeHeader = first.some((cell) => cell in HEADER_ALIASES);
 
-  let index: { sku: number; total_qty: number; warehouse_code: number };
+  let index: {
+    sku: number;
+    total_qty: number;
+    warehouse_code: number;
+    unit_cost: number;
+  };
 
   if (looksLikeHeader) {
     const find = (field: keyof CsvRow) =>
@@ -83,18 +99,19 @@ export function parseStockCsv(text: string): CsvParse {
       sku: find("sku"),
       total_qty: find("total_qty"),
       warehouse_code: find("warehouse_code"),
+      unit_cost: find("unit_cost"),
     };
 
     if (index.sku === -1 || index.total_qty === -1) {
       problems.push({
         line: 1,
         message:
-          "The header needs a sku column and a total_qty column. warehouse_code is optional.",
+          "The header needs a sku column and a total_qty column. warehouse_code and unit_cost are optional.",
       });
       return { rows, problems };
     }
   } else {
-    index = { sku: 0, total_qty: 1, warehouse_code: 2 };
+    index = { sku: 0, total_qty: 1, warehouse_code: 2, unit_cost: 3 };
   }
 
   const body = looksLikeHeader ? lines.slice(1) : lines;
@@ -111,6 +128,8 @@ export function parseStockCsv(text: string): CsvParse {
       index.warehouse_code === -1
         ? ""
         : (cells[index.warehouse_code] ?? "").trim().toUpperCase();
+    const rawCost =
+      index.unit_cost === -1 ? "" : (cells[index.unit_cost] ?? "").trim();
 
     if (!sku) {
       problems.push({ line: lineNumber, message: "No SKU on this line." });
@@ -134,8 +153,28 @@ export function parseStockCsv(text: string): CsvParse {
       return;
     }
 
+    let unit_cost: number | null | undefined;
+
+    if (rawCost === "-") {
+      unit_cost = null;
+    } else if (rawCost !== "") {
+      const parsed = parseCost(rawCost);
+      if (parsed === "invalid") {
+        problems.push({
+          line: lineNumber,
+          message: `${sku} has a cost of "${rawCost}". Use a number of at least 0, blank to leave it, or - to clear it.`,
+        });
+        return;
+      }
+      unit_cost = parsed;
+    }
+
     seen.add(sku);
-    rows.push(code ? { sku, total_qty, warehouse_code: code } : { sku, total_qty });
+
+    const row: CsvRow = { sku, total_qty };
+    if (code) row.warehouse_code = code;
+    if (unit_cost !== undefined) row.unit_cost = unit_cost;
+    rows.push(row);
   });
 
   return { rows, problems };
@@ -147,12 +186,22 @@ function cell(value: string): string {
 }
 
 export function toStockCsv(
-  products: { sku: string; total_qty: number; warehouse_code: string }[],
+  products: {
+    sku: string;
+    total_qty: number;
+    warehouse_code: string;
+    /** Omitted until docs/cost.sql has been run. */
+    unit_cost?: number | null;
+  }[],
 ): string {
-  const header = "sku,total_qty,warehouse_code";
-  const body = products.map(
-    (product) =>
-      `${cell(product.sku)},${product.total_qty},${cell(product.warehouse_code)}`,
+  const header = "sku,total_qty,warehouse_code,unit_cost";
+  const body = products.map((product) =>
+    [
+      cell(product.sku),
+      product.total_qty,
+      cell(product.warehouse_code),
+      product.unit_cost ?? "",
+    ].join(","),
   );
   return [header, ...body].join("\n");
 }
