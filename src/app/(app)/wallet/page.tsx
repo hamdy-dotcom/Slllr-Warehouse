@@ -123,13 +123,13 @@ export default async function WalletPage({
                 {money(wallet.in_progress_value)}
               </div>
               <div className="mt-[2px] text-body text-ink-3">
-                {n(wallet.in_progress_qty)} units released, not yet settled
+                {n(wallet.in_progress_qty)} units dispatched, not yet settled
               </div>
               <div className="mt-3">
                 <Pill tone="calm">not owed yet</Pill>
               </div>
               <Muted className="mt-[10px] max-w-[380px] text-meta">
-                These units have left the shelf but have not been confirmed as
+                These units have been dispatched but not yet confirmed as
                 delivered or returned. Nothing here is payable until they are.
               </Muted>
             </Card>

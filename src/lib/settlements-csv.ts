@@ -1,15 +1,29 @@
 /**
- * CSV for bulk deliveries and returns: `sku,kind,qty,occurred_on,reference`.
+ * CSV for a day of stock movement: `sku,kind,qty,occurred_on,reference`.
  *
- * `kind` is delivered or returned. `occurred_on` is the day it happened,
- * defaulting to today when the column is absent — a daily upload is normally
- * about yesterday, so the caller passes the day it means.
+ * `kind` is dispatched, delivered, or returned. A dispatch sends units off the
+ * shelf against an approved request; delivered and returned settle units that
+ * were dispatched earlier. `occurred_on` defaults to the date the caller
+ * passes, which is normally yesterday.
  */
+
+/** What lands in `settlements.kind`. A dispatch is a movement, not a settlement. */
 export type SettlementKind = "delivered" | "returned";
+
+/** Every kind a daily row can carry. */
+export type DailyKind = "dispatched" | SettlementKind;
+
+export const DAILY_KINDS: DailyKind[] = ["dispatched", "delivered", "returned"];
+
+export const DAILY_KIND_LABELS: Record<DailyKind, string> = {
+  dispatched: "Dispatched",
+  delivered: "Delivered",
+  returned: "Returned",
+};
 
 export type SettlementCsvRow = {
   sku: string;
-  kind: SettlementKind;
+  kind: DailyKind;
   qty: number;
   occurred_on: string;
   reference?: string;
@@ -61,7 +75,12 @@ const HEADERS: Record<string, keyof SettlementCsvRow> = {
   ref: "reference",
 };
 
-const KIND_ALIASES: Record<string, SettlementKind> = {
+const KIND_ALIASES: Record<string, DailyKind> = {
+  dispatched: "dispatched",
+  dispatch: "dispatched",
+  // The old word, so a file written before the rename still reads.
+  released: "dispatched",
+  release: "dispatched",
   delivered: "delivered",
   delivery: "delivered",
   deliver: "delivered",
@@ -124,7 +143,7 @@ export function parseSettlementCsv(
     if (!kind) {
       problems.push({
         line: lineNumber,
-        message: `${sku}: "${at(index.kind)}" is not delivered or returned.`,
+        message: `${sku}: "${at(index.kind)}" is not dispatched, delivered, or returned.`,
       });
       return;
     }
@@ -176,6 +195,7 @@ export function parseSettlementCsv(
 export function settlementCsvTemplate(date: string): string {
   return [
     "sku,kind,qty,occurred_on,reference",
+    `SKU-1001,dispatched,40,${date},DO-5510`,
     `SKU-1001,delivered,12,${date},INV-2201`,
     `SKU-1002,returned,3,${date},RET-118`,
   ].join("\n");

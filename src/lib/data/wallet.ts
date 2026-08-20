@@ -13,7 +13,7 @@ export type Wallet = {
   paid_total: number;
   /** `delivered_value - paid_total`. Returns are not billed, so not subtracted. */
   balance: number;
-  /** Released to Sllr, not yet settled. Not owed yet. */
+  /** Dispatched to Sllr, not yet settled. Not owed yet. */
   in_progress_qty: number;
   in_progress_value: number;
 };
@@ -185,7 +185,7 @@ export type InProgressLine = {
   in_progress_value: number;
 };
 
-/** What is released but unsettled, per SKU — the pool a delivery draws from. */
+/** What is dispatched but unsettled, per SKU — the pool a delivery draws from. */
 export async function inProgressBySupplier(
   supplierId: string,
 ): Promise<InProgressLine[]> {
@@ -206,4 +206,76 @@ export async function inProgressBySupplier(
     in_progress_qty: row.in_progress_qty ?? 0,
     in_progress_value: row.in_progress_value ?? 0,
   }));
+}
+
+export type OutstandingLine = {
+  sku: string;
+  name: string;
+  /** `qty_approved - qty_released` summed over that product's approved requests. */
+  outstanding_qty: number;
+  outstanding_value: number;
+  /** Oldest approved request first — the order a dispatch allocates in. */
+  requests: { id: string; outstanding: number; unit_cost: number | null }[];
+};
+
+/**
+ * What is approved and still waiting to leave the shelf, per SKU.
+ *
+ * A dispatch draws against this. The per-request breakdown comes with it
+ * because `record_stock_movements` books a dispatch against one request at a
+ * time, so a row larger than the oldest request has to be split across
+ * several.
+ */
+export async function outstandingBySupplier(
+  supplierId: string,
+): Promise<OutstandingLine[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reserve_requests")
+    .select(
+      "id, qty_approved, qty_released, unit_cost, created_at, products!inner(sku, name, supplier_id)",
+    )
+    .eq("status", "approved")
+    .eq("products.supplier_id", supplierId)
+    .order("created_at", { ascending: true })
+    .overrideTypes<
+      {
+        id: string;
+        qty_approved: number | null;
+        qty_released: number | null;
+        unit_cost: number | null;
+        created_at: string;
+        products: { sku: string; name: string; supplier_id: string };
+      }[]
+    >();
+
+  if (error) throw new Error(`Could not load outstanding: ${error.message}`);
+
+  const bySku = new Map<string, OutstandingLine>();
+
+  for (const row of data ?? []) {
+    const outstanding = (row.qty_approved ?? 0) - (row.qty_released ?? 0);
+    if (outstanding <= 0) continue;
+
+    const line = bySku.get(row.products.sku) ?? {
+      sku: row.products.sku,
+      name: row.products.name,
+      outstanding_qty: 0,
+      outstanding_value: 0,
+      requests: [],
+    };
+
+    line.outstanding_qty += outstanding;
+    line.outstanding_value += outstanding * (row.unit_cost ?? 0);
+    line.requests.push({
+      id: row.id,
+      outstanding,
+      unit_cost: row.unit_cost,
+    });
+
+    bySku.set(row.products.sku, line);
+  }
+
+  return [...bySku.values()].sort((a, b) => a.sku.localeCompare(b.sku));
 }

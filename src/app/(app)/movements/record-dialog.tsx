@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { useId, useMemo, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Muted } from "@/components/ui/card";
@@ -26,13 +19,10 @@ import { n } from "@/lib/format";
 import {
   KINDS_BY_DIRECTION,
   KIND_LABELS,
-  RELEASE_KIND,
-  releaseOutcome,
   type Direction,
   type MovementKind,
 } from "@/lib/movements";
 import { movementCsvTemplate, parseMovementCsv } from "@/lib/movements-csv";
-import type { ApprovedRequestOption } from "@/lib/data/movements";
 import type { ProductStock } from "@/lib/types";
 import {
   recordMovements,
@@ -43,7 +33,6 @@ import {
 type Props = {
   direction: Direction;
   shelf: ProductStock[];
-  approvedBySku: Record<string, ApprovedRequestOption[]>;
 };
 
 export function RecordMovementButton(props: Props) {
@@ -70,7 +59,6 @@ const TD = "border-t border-line px-[10px] py-[9px] align-middle";
 function RecordDialog({
   direction,
   shelf,
-  approvedBySku,
   onClose,
 }: Props & { onClose: () => void }) {
   const toast = useToast();
@@ -84,7 +72,6 @@ function RecordDialog({
   const [sku, setSku] = useState("");
   const [qty, setQty] = useState("");
   const [kind, setKind] = useState<MovementKind>(kinds[0]);
-  const [requestId, setRequestId] = useState("");
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
   const [csv, setCsv] = useState("");
@@ -93,12 +80,6 @@ function RecordDialog({
   const [pending, startTransition] = useTransition();
 
   const product = shelf.find((row) => row.sku === sku) ?? null;
-  const options = approvedBySku[sku] ?? [];
-  const chosen = options.find((option) => option.id === requestId) ?? null;
-  const isRelease = kind === RELEASE_KIND;
-
-  // A different product means a different set of approved requests.
-  useEffect(() => setRequestId(""), [sku]);
 
   const parsed = useMemo(
     () => parseMovementCsv(csv, direction),
@@ -106,8 +87,6 @@ function RecordDialog({
   );
 
   const quantity = Number(qty);
-  const outcome =
-    isRelease && chosen ? releaseOutcome(quantity, chosen.outstanding) : null;
 
   // What the shelf looks like afterwards, so the guard is visible up front.
   const after =
@@ -117,23 +96,13 @@ function RecordDialog({
         : product.total_qty - quantity
       : null;
 
-  // A release hands reserved stock over, so the reserve falls with it. Any
-  // other outbound leaves the reserve where it is.
-  const reservedAfter =
-    product === null
-      ? 0
-      : isRelease && Number.isInteger(quantity) && quantity > 0
-        ? Math.max(0, product.reserved_qty - quantity)
-        : product.reserved_qty;
-
-  // Releasing does not change what was approved; it moves released up.
-  const releasedAfter = chosen
-    ? chosen.qty_released +
-      (Number.isInteger(quantity) && quantity > 0 ? quantity : 0)
-    : 0;
-
+  // Nothing here touches the reserve — a dispatch is the only outbound that
+  // does, and it is recorded on the daily update screen.
   const breachesReserve =
-    !inbound && after !== null && product !== null && after < reservedAfter;
+    !inbound &&
+    after !== null &&
+    product !== null &&
+    after < product.reserved_qty;
 
   function submit(rows: MovementRow[]) {
     setError(null);
@@ -164,11 +133,6 @@ function RecordDialog({
     if (!Number.isInteger(quantity) || quantity < 1) {
       return setError("Enter a quantity of at least 1.");
     }
-    if (isRelease && !chosen) {
-      return setError("Pick the approved request this release is against.");
-    }
-    if (outcome && !outcome.valid) return setError(outcome.message);
-
     submit([
       {
         sku,
@@ -177,7 +141,6 @@ function RecordDialog({
         kind,
         ...(reference.trim() ? { reference: reference.trim() } : {}),
         ...(note.trim() ? { note: note.trim() } : {}),
-        ...(isRelease && chosen ? { request_id: chosen.id } : {}),
       },
     ]);
   }
@@ -228,7 +191,6 @@ function RecordDialog({
             setResults(null);
             setCsv("");
             setQty("");
-            setRequestId("");
           }}
         />
       ) : (
@@ -289,36 +251,6 @@ function RecordDialog({
                 </Select>
               </Field>
 
-              {isRelease ? (
-                <Field
-                  label="Against which approved request"
-                  htmlFor="request"
-                  hint="A release has to be booked against one approved reserve request."
-                >
-                  <Select
-                    id="request"
-                    value={requestId}
-                    onChange={(event) => setRequestId(event.target.value)}
-                    disabled={!sku}
-                  >
-                    <option value="">
-                      {!sku
-                        ? "Pick a product first…"
-                        : options.length === 0
-                          ? "No approved requests on this product"
-                          : "Pick a request…"}
-                    </option>
-                    {options.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {n(option.outstanding)} outstanding of{" "}
-                        {n(option.qty_approved)} approved
-                        {option.note ? ` · ${option.note}` : ""}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              ) : null}
-
               <Field label="Quantity" htmlFor="qty">
                 <Input
                   id="qty"
@@ -360,48 +292,10 @@ function RecordDialog({
                       — that is below the {n(product.reserved_qty)} reserved for
                       Sllr, so this will be refused.
                     </>
-                  ) : reservedAfter !== product.reserved_qty ? (
-                    <>
-                      {" "}
-                      · reserved for Sllr {n(product.reserved_qty)} →{" "}
-                      <b>{n(reservedAfter)}</b>
-                    </>
                   ) : (
                     <> · {n(product.reserved_qty)} stays reserved for Sllr</>
                   )}
                 </Note>
-              ) : null}
-
-              {chosen ? (
-                <Note calm>
-                  <div className="mb-1 font-medium">This request</div>
-                  <div className="flex flex-wrap gap-x-[18px] gap-y-[2px]">
-                    <span>Requested {n(chosen.qty_requested)}</span>
-                    <span>Approved {n(chosen.qty_approved)}</span>
-                    <span>
-                      Released {n(chosen.qty_released)}
-                      {releasedAfter !== chosen.qty_released ? (
-                        <>
-                          {" "}
-                          → <b>{n(releasedAfter)}</b>
-                        </>
-                      ) : null}
-                    </span>
-                    <span>
-                      Outstanding {n(chosen.outstanding)}
-                      {outcome?.valid ? (
-                        <>
-                          {" "}
-                          → <b>{n(chosen.outstanding - quantity)}</b>
-                        </>
-                      ) : null}
-                    </span>
-                  </div>
-                </Note>
-              ) : null}
-
-              {outcome ? (
-                <Note calm={outcome.valid}>{outcome.message}</Note>
               ) : null}
 
               <FieldError>{error}</FieldError>
@@ -432,13 +326,9 @@ function RecordDialog({
             <>
               <Muted className="mb-[10px]">
                 Columns are sku, qty, kind, reference, note. Kind must be one of{" "}
-                {kinds
-                  .filter((k) => k !== RELEASE_KIND)
-                  .map((k) => KIND_LABELS[k].toLowerCase())
-                  .join(", ")}
-                .
+                {kinds.map((k) => KIND_LABELS[k].toLowerCase()).join(", ")}.
                 {!inbound
-                  ? " Releases to Sllr are one at a time, because each names a request."
+                  ? " Dispatches to Sllr are recorded on the daily update screen."
                   : ""}
               </Muted>
 

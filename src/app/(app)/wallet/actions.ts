@@ -36,7 +36,7 @@ function revalidateAll() {
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Records deliveries and returns against released stock.
+ * Records deliveries and returns against dispatched stock.
  *
  * Every row is checked against `in_progress_qty` before the RPC is called.
  * That is not belt and braces: `record_settlements` allocates FIFO and
@@ -98,7 +98,7 @@ export async function recordSettlements(
     (stock ?? []).map((row) => [row.sku ?? "", row.in_progress_qty ?? 0]),
   );
 
-  // Both kinds draw from the same pool of released-but-unsettled units.
+  // Both kinds draw from the same pool of dispatched-but-unsettled units.
   const wanted = new Map<string, number>();
   for (const row of rows) {
     wanted.set(row.sku, (wanted.get(row.sku) ?? 0) + row.qty);

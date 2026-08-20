@@ -35,7 +35,7 @@ export type ProductStock = Product & {
    * has no cost — "not priced yet" is a real state, not a zero.
    */
   stock_value: number | null;
-  /** Released to Sllr but not yet settled as delivered or returned. */
+  /** Dispatched to Sllr but not yet settled as delivered or returned. */
   in_progress_qty: number;
   in_progress_value: number | null;
 };

@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import {
   DIRECTIONS,
   DIRECTION_LABELS,
-  KINDS_BY_DIRECTION,
+  FILTERABLE_KINDS,
   KIND_LABELS,
   type Direction,
   type MovementKind,
@@ -64,15 +64,13 @@ export function MovementFilters({
   // Changing direction drops a kind that does not belong to the new one.
   function pickDirection(next?: Direction) {
     const keepKind =
-      kind && next && KINDS_BY_DIRECTION[next].includes(kind)
-        ? kind
-        : undefined;
+      kind && next && FILTERABLE_KINDS[next].includes(kind) ? kind : undefined;
     push({ direction: next, kind: keepKind });
   }
 
   const kinds = direction
-    ? KINDS_BY_DIRECTION[direction]
-    : [...KINDS_BY_DIRECTION.in, ...KINDS_BY_DIRECTION.out];
+    ? FILTERABLE_KINDS[direction]
+    : [...FILTERABLE_KINDS.in, ...FILTERABLE_KINDS.out];
 
   const dirty = Boolean(direction || kind || from || to || q);
 

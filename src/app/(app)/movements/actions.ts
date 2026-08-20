@@ -8,7 +8,6 @@ import {
   isDirection,
   isMovementKind,
   kindFits,
-  RELEASE_KIND,
   type Direction,
   type MovementKind,
 } from "@/lib/movements";
@@ -45,6 +44,9 @@ function revalidateAll() {
  * Checks the things the RPC would otherwise answer with a raw Postgres error.
  * A missing direction hits a NOT NULL constraint rather than a per-row
  * message, so it never reaches the database from here.
+ *
+ * `kindFits` also keeps a dispatch out: it is allocated against approved
+ * requests on the daily screen, never recorded loose from here.
  */
 function validate(row: MovementRow): string | null {
   if (!row.sku) return "Every row needs a SKU.";
@@ -56,9 +58,6 @@ function validate(row: MovementRow): string | null {
   }
   if (!isMovementKind(row.kind) || !kindFits(row.direction, row.kind)) {
     return `${row.sku}: that kind does not belong to an ${row.direction === "in" ? "inbound" : "outbound"} movement.`;
-  }
-  if (row.kind === RELEASE_KIND && !row.request_id) {
-    return `${row.sku}: a release to Sllr has to name an approved request.`;
   }
   return null;
 }

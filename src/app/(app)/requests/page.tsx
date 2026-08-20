@@ -47,7 +47,8 @@ export default async function RequestsPage() {
         <h1 className="text-title font-medium">My requests</h1>
         <Muted className="mt-[6px] max-w-[460px]">
           Approved quantity is what lands in Reserved for Sllr. Nothing is
-          deducted before approval.
+          deducted before approval, and nothing on this page changes a quantity
+          — dispatching happens on the daily update.
         </Muted>
       </div>
 
@@ -100,7 +101,7 @@ export default async function RequestsPage() {
                   <th className={TH}>Unit cost</th>
                   <th className={TH}>Requested</th>
                   <th className={TH}>Approved</th>
-                  <th className={TH}>Released</th>
+                  <th className={TH}>Dispatched</th>
                   <th className={TH}>Outstanding</th>
                   <th className={TH}>Value</th>
                   <th className={TH}>Hold until</th>
@@ -121,12 +122,13 @@ export default async function RequestsPage() {
                     request.qty_approved !== null &&
                     request.qty_approved < request.qty_requested;
 
-                  // Approved is immutable once approved; releasing moves
-                  // released up and outstanding down. All four are shown so no
-                  // single figure has to carry two meanings.
+                  // Approved is immutable once approved; dispatching moves
+                  // qty_released up and outstanding down. All four are shown so
+                  // no single figure has to carry two meanings. The column
+                  // keeps its database name — see docs/dispatch.sql.
                   const approved = request.qty_approved ?? 0;
-                  const released = request.qty_released ?? 0;
-                  const outstanding = approved - released;
+                  const dispatched = request.qty_released ?? 0;
+                  const outstanding = approved - dispatched;
 
                   return (
                     <tr key={request.id}>
@@ -175,10 +177,10 @@ export default async function RequestsPage() {
                         )}
                       </td>
                       <td className={`${TD} tabular-nums`}>
-                        {released === 0 ? (
+                        {dispatched === 0 ? (
                           <span className="text-ink-3">—</span>
                         ) : (
-                          <b className="font-medium">{n(released)}</b>
+                          <b className="font-medium">{n(dispatched)}</b>
                         )}
                       </td>
 

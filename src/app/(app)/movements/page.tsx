@@ -6,7 +6,6 @@ import { requireSupplier } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
 import {
   LEDGER_LIMIT,
-  approvedRequestsBySku,
   listMovements,
   movementTotals,
 } from "@/lib/data/movements";
@@ -51,10 +50,9 @@ export default async function MovementsPage({
   const to = ISO_DATE.test(params.to ?? "") ? params.to! : "";
   const q = params.q ?? "";
 
-  const [movements, shelf, approvedBySku, totals] = await Promise.all([
+  const [movements, shelf, totals] = await Promise.all([
     listMovements({ direction, kind, from, to, q }),
     listProductStock(),
-    approvedRequestsBySku(),
     movementTotals(30),
   ]);
 
@@ -118,16 +116,8 @@ export default async function MovementsPage({
         to={to}
         q={q}
       >
-        <RecordMovementButton
-          direction="out"
-          shelf={shelf}
-          approvedBySku={approvedBySku}
-        />
-        <RecordMovementButton
-          direction="in"
-          shelf={shelf}
-          approvedBySku={approvedBySku}
-        />
+        <RecordMovementButton direction="out" shelf={shelf} />
+        <RecordMovementButton direction="in" shelf={shelf} />
       </MovementFilters>
 
       <Card>

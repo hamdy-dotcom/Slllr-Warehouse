@@ -163,7 +163,7 @@ export async function requestValues(): Promise<RequestValues> {
   const rows = data ?? [];
 
   return {
-    // Outstanding, not approved: units already released have left the shelf
+    // Outstanding, not approved: units already dispatched have left the shelf
     // and are being settled through the wallet, so they are no longer held.
     held: rollValue(
       rows.filter((row) => row.status === "approved"),

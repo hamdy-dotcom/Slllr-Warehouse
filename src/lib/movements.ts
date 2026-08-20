@@ -21,19 +21,38 @@ export const KIND_LABELS: Record<MovementKind, string> = {
   purchase: "Purchase",
   return: "Return",
   correction: "Correction",
-  release_sllr: "Release to Sllr",
+  // The enum value stays release_sllr — see docs/dispatch.sql. Only the
+  // label changes, so nothing in the database has to move.
+  release_sllr: "Dispatch to Sllr",
   sale_other: "Sold elsewhere",
   damage: "Damage",
 };
 
-/** Which kinds a direction offers. */
+/**
+ * Which kinds a direction offers when recording a movement by hand.
+ *
+ * `release_sllr` is deliberately absent: a dispatch has to be allocated
+ * against approved requests, and that now happens in one place, on the daily
+ * update screen.
+ */
 export const KINDS_BY_DIRECTION: Record<Direction, MovementKind[]> = {
+  in: ["purchase", "return", "correction"],
+  out: ["sale_other", "damage"],
+};
+
+/**
+ * Every kind that can appear in the ledger, for filtering.
+ *
+ * Wider than what can be recorded by hand: a dispatch is written by the daily
+ * update, and rows you cannot create are still rows you need to find.
+ */
+export const FILTERABLE_KINDS: Record<Direction, MovementKind[]> = {
   in: ["purchase", "return", "correction"],
   out: ["release_sllr", "sale_other", "damage"],
 };
 
-/** The one kind that must be tied to an approved reserve request. */
-export const RELEASE_KIND: MovementKind = "release_sllr";
+/** The kind a dispatch is stored as. Written only by the daily screen. */
+export const DISPATCH_KIND: MovementKind = "release_sllr";
 
 export function isDirection(value: string | undefined): value is Direction {
   return value === "in" || value === "out";
@@ -59,42 +78,4 @@ export function signedQty(direction: Direction, qty: number): string {
   const text = size.toLocaleString("en-US");
   if (size === 0) return text;
   return direction === "in" ? `+${text}` : `−${text}`;
-}
-
-/**
- * What a release does to the request behind it.
- *
- * Approved is immutable once a request is approved — releasing moves
- * `qty_released` up, and outstanding (`qty_approved - qty_released`) is what
- * falls. The sentence says so, because the old behaviour mutated the approved
- * figure and that is the thing people will expect to see change.
- */
-export function releaseOutcome(
-  qty: number,
-  outstandingQty: number,
-): { valid: boolean; message: string } {
-  const size = (value: number) => value.toLocaleString("en-US");
-
-  if (!Number.isInteger(qty) || qty < 1) {
-    return { valid: false, message: "Enter a quantity of at least 1." };
-  }
-
-  if (qty > outstandingQty) {
-    return {
-      valid: false,
-      message: `That request only has ${size(outstandingQty)} units still outstanding.`,
-    };
-  }
-
-  if (qty === outstandingQty) {
-    return {
-      valid: true,
-      message: `Releases everything still outstanding. Approved stays as it is, released rises to match it, and the request is marked consumed.`,
-    };
-  }
-
-  return {
-    valid: true,
-    message: `Partial release. Approved does not change — outstanding falls to ${size(outstandingQty - qty)} and stays reserved for Sllr.`,
-  };
 }

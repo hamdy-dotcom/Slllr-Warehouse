@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { requireProfile } from "@/lib/auth";
-import { inProgressBySupplier, listSuppliers } from "@/lib/data/wallet";
+import {
+  inProgressBySupplier,
+  listSuppliers,
+  outstandingBySupplier,
+} from "@/lib/data/wallet";
 import { SupplierPicker } from "@/app/(app)/wallet/supplier-picker";
 import { DailyForm } from "./daily-form";
 
@@ -32,7 +36,13 @@ export default async function DailyPage({
     null;
 
   const supplier = suppliers.find((row) => row.id === selectedId) ?? null;
-  const lines = selectedId ? await inProgressBySupplier(selectedId) : [];
+
+  const [outstanding, inProgress] = selectedId
+    ? await Promise.all([
+        outstandingBySupplier(selectedId),
+        inProgressBySupplier(selectedId),
+      ])
+    : [[], []];
 
   return (
     <>
@@ -40,9 +50,10 @@ export default async function DailyPage({
         <div>
           <h1 className="text-title font-medium">Daily update</h1>
           <Muted className="mt-[6px] max-w-[520px]">
-            Paste a day&rsquo;s delivered and returned numbers in one go. Every
-            row shows what the SKU had in progress before and after, so the day
-            can be checked before any of it is committed.
+            Everything that moved, in one paste — dispatched off the shelf,
+            delivered, and returned. Every row shows the pool it draws from
+            before and after, so the day can be checked before any of it is
+            committed.
           </Muted>
         </div>
 
@@ -57,8 +68,10 @@ export default async function DailyPage({
         </Card>
       ) : (
         <DailyForm
-          lines={lines}
+          outstanding={outstanding}
+          inProgress={inProgress}
           defaultDate={yesterday()}
+          supplierId={supplier.id}
           supplierName={supplier.name}
         />
       )}

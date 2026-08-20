@@ -2,14 +2,13 @@
  * CSV for bulk movements: `sku,qty,kind,reference,note`.
  *
  * Direction is not a column — it comes from which form the supplier is in, so
- * a file of inbound rows cannot quietly contain an outbound one. Releases to
- * Sllr are not accepted here either: each one has to name an approved request,
- * which is a per-row choice a spreadsheet cannot make.
+ * a file of inbound rows cannot quietly contain an outbound one. Dispatches to
+ * Sllr are not here at all: they are allocated against approved requests on
+ * the daily update screen.
  */
 import {
   KINDS_BY_DIRECTION,
   KIND_LABELS,
-  RELEASE_KIND,
   isMovementKind,
   type Direction,
   type MovementKind,
@@ -110,9 +109,7 @@ export function parseMovementCsv(
     return { rows, problems };
   }
 
-  const allowed = KINDS_BY_DIRECTION[direction].filter(
-    (kind) => kind !== RELEASE_KIND,
-  );
+  const allowed = KINDS_BY_DIRECTION[direction];
 
   const body = hasHeader ? lines.slice(1) : lines;
   const offset = hasHeader ? 2 : 1;
@@ -168,9 +165,7 @@ export function parseMovementCsv(
 }
 
 export function movementCsvTemplate(direction: Direction): string {
-  const kind = KINDS_BY_DIRECTION[direction].filter(
-    (k) => k !== RELEASE_KIND,
-  )[0];
+  const kind = KINDS_BY_DIRECTION[direction][0];
   return ["sku,qty,kind,reference,note", `SKU-1001,120,${kind},PO-4821,`].join(
     "\n",
   );

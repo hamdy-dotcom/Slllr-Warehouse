@@ -185,6 +185,35 @@ comes from which form you are in, so a file of inbound rows cannot quietly
 contain an outbound one. Releases are excluded from bulk, because each one has
 to name a request and a spreadsheet cannot make that choice.
 
+### Recording stock movement
+
+The daily update is the only place stock movement is recorded. One paste,
+three kinds:
+
+| Kind | Draws from | Effect |
+|---|---|---|
+| dispatched | outstanding (`qty_approved − qty_released`) | off the shelf, into in progress |
+| delivered | in progress | billed |
+| returned | in progress | back on the shelf, never billed |
+
+Rows are simulated in paste order against the live pools, so a SKU dispatched
+on one line and delivered on the next sees its own dispatch. Nothing is written
+unless the whole paste fits — half a day landing is worse than none of it, and
+`record_settlements` cannot be trusted to refuse a row without committing it
+first (see `docs/dispatch.sql`).
+
+`simulateDaily` in `src/lib/daily.ts` runs both in the browser for the preview
+and on the server for the decision, so what the screen promises and what the
+action allows cannot drift.
+
+A dispatch is booked against approved requests oldest first, split across
+several when one row is larger than the oldest request, because
+`record_stock_movements` takes one request per movement.
+
+**Dispatch, not release.** The UI says dispatched throughout. The database
+still says `qty_released` and `release_sllr`; `docs/dispatch.sql` has a view
+exposing them under the new words without renaming anything.
+
 ### Wallet and settlement
 
 Released stock is not owed for yet. It sits **in progress** until Sllr confirms
