@@ -28,8 +28,9 @@ so it must never reach the browser — it is read only inside server actions.
 
 ### Database
 
-The schema in `docs/schema.sql` is already live, and the cost columns in
-`docs/cost-applied.sql` are applied on top of it. Neither is a migration to
+The schema in `docs/schema.sql` is already live, with the cost columns in
+`docs/cost-applied.sql` and the movement columns, enums, and
+`record_stock_movements` RPC applied on top of it. Neither is a migration to
 run — they record what is already there. Regenerate the types after any schema
 change:
 
@@ -154,6 +155,35 @@ Which cost a figure uses depends on what the figure means:
 never faked as zero. Every roll-up carries how many rows it could not price and
 the screen shows that as a caveat — `SAR 23,780,344 · 4 not priced` — rather
 than quietly reporting a total that is missing lines.
+
+### Movements
+
+`/movements` is the supplier's ledger of everything that has come onto the
+shelf or left it, filterable by direction, kind, date range, and free text over
+product, SKU, code, and reference.
+
+Recording goes through `record_stock_movements(p_rows jsonb)`, which answers
+per row like `bulk_update_stock` and enforces the rule that matters: outbound
+stock can never take a product below what is reserved for Sllr. The dialog
+shows the same arithmetic before you commit —
+`195 → 5 on the shelf — that is below the 19 reserved for Sllr, so this will be
+refused.`
+
+`release_sllr` is the one kind that must name an approved reserve request, and
+its effect depends on the quantity, so the dialog spells that out too:
+
+| Release | Effect |
+|---|---|
+| the full approved quantity | request is marked `consumed` and stops counting towards Reserved |
+| less than that | `qty_approved` drops by the amount and the rest stays reserved |
+
+`qty_requested` is never touched either way, so the audit trail survives a
+release the same way it survives a partial approve.
+
+Bulk CSV takes `sku,qty,kind,reference,note`. Direction is not a column — it
+comes from which form you are in, so a file of inbound rows cannot quietly
+contain an outbound one. Releases are excluded from bulk, because each one has
+to name a request and a spreadsheet cannot make that choice.
 
 ### Layout toggle
 

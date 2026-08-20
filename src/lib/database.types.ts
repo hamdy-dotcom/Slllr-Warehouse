@@ -178,28 +178,43 @@ export type Database = {
           actor: string | null
           created_at: string
           delta: number
+          direction: Database["public"]["Enums"]["movement_direction"]
           id: string
+          kind: Database["public"]["Enums"]["movement_kind"]
+          note: string | null
           product_id: string
           qty_after: number
           reason: string
+          reference: string | null
+          request_id: string | null
         }
         Insert: {
           actor?: string | null
           created_at?: string
           delta: number
+          direction: Database["public"]["Enums"]["movement_direction"]
           id?: string
+          kind: Database["public"]["Enums"]["movement_kind"]
+          note?: string | null
           product_id: string
           qty_after: number
           reason: string
+          reference?: string | null
+          request_id?: string | null
         }
         Update: {
           actor?: string | null
           created_at?: string
           delta?: number
+          direction?: Database["public"]["Enums"]["movement_direction"]
           id?: string
+          kind?: Database["public"]["Enums"]["movement_kind"]
+          note?: string | null
           product_id?: string
           qty_after?: number
           reason?: string
+          reference?: string | null
+          request_id?: string | null
         }
         Relationships: [
           {
@@ -221,6 +236,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "reserve_requests"
             referencedColumns: ["id"]
           },
         ]
@@ -365,6 +387,14 @@ export type Database = {
       }
       my_role: { Args: never; Returns: Database["public"]["Enums"]["app_role"] }
       my_supplier: { Args: never; Returns: string }
+      record_stock_movements: {
+        Args: { p_rows: Json }
+        Returns: {
+          message: string
+          ok: boolean
+          sku: string
+        }[]
+      }
       reject_reserve_request: {
         Args: { p_note?: string; p_request_id: string }
         Returns: {
@@ -392,6 +422,14 @@ export type Database = {
     }
     Enums: {
       app_role: "sllr" | "supplier" | "admin"
+      movement_direction: "in" | "out"
+      movement_kind:
+        | "purchase"
+        | "return"
+        | "correction"
+        | "release_sllr"
+        | "sale_other"
+        | "damage"
       request_status:
         | "pending"
         | "approved"
@@ -526,6 +564,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["sllr", "supplier", "admin"],
+      movement_direction: ["in", "out"],
+      movement_kind: [
+        "purchase",
+        "return",
+        "correction",
+        "release_sllr",
+        "sale_other",
+        "damage",
+      ],
       request_status: [
         "pending",
         "approved",

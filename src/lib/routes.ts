@@ -13,6 +13,7 @@ export const NAV: Record<AppRole, NavItem[]> = {
   supplier: [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/inventory", label: "Inventory" },
+    { href: "/movements", label: "Movements" },
     { href: "/approvals", label: "Approvals" },
     { href: "/warehouse", label: "Warehouse layout" },
   ],
@@ -20,6 +21,7 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/catalog", label: "Catalog" },
     { href: "/inventory", label: "Inventory" },
+    { href: "/movements", label: "Movements" },
     { href: "/approvals", label: "Approvals" },
     { href: "/warehouse", label: "Warehouse layout" },
   ],
@@ -31,6 +33,7 @@ const ACCESS: Record<string, readonly AppRole[]> = {
   "/catalog": ["sllr", "admin"],
   "/requests": ["sllr", "admin"],
   "/inventory": ["supplier", "admin"],
+  "/movements": ["supplier", "admin"],
   "/approvals": ["supplier", "admin"],
   "/warehouse": ["sllr", "supplier", "admin"],
 };
@@ -44,7 +47,11 @@ export const HOME = "/dashboard";
  */
 const COUNTERPART: Partial<Record<AppRole, Record<string, string>>> = {
   supplier: { "/catalog": "/inventory", "/requests": "/approvals" },
-  sllr: { "/inventory": "/catalog", "/approvals": "/catalog" },
+  sllr: {
+    "/inventory": "/catalog",
+    "/movements": "/catalog",
+    "/approvals": "/catalog",
+  },
 };
 
 /** The `/dashboard` in `/dashboard/anything`. */

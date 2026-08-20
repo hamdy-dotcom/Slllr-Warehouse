@@ -6,8 +6,10 @@ import { Kpi } from "@/components/ui/kpi";
 import { StockBar } from "@/components/ui/stock-bar";
 import { requireProfile } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
+import { movementTotals } from "@/lib/data/movements";
 import { requestCounts, requestValues } from "@/lib/data/requests";
 import { n, pct } from "@/lib/format";
+import { signedQty } from "@/lib/movements";
 import { money, unpricedNote } from "@/lib/money";
 import { shelfTotals, shelfValues } from "@/lib/shelf";
 import { TOTAL_BINS, buildGrid, occupiedCount } from "@/lib/warehouse";
@@ -16,10 +18,14 @@ export const metadata: Metadata = { title: "Dashboard · Sllr warehouse" };
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
-  const [shelf, counts, values] = await Promise.all([
+  const supplierView = profile.role === "supplier";
+
+  const [shelf, counts, values, moves] = await Promise.all([
     listProductStock(),
     requestCounts(),
     requestValues(),
+    // Only the supplier moves stock, so only the supplier is shown the totals.
+    supplierView ? movementTotals(30) : Promise.resolve(null),
   ]);
 
   const totals = shelfTotals(shelf);
@@ -29,7 +35,7 @@ export default async function DashboardPage() {
   const shelfWorth = shelfValues(shelf);
   const unpriced = unpricedNote(shelfWorth.stock);
   const grid = buildGrid(shelf);
-  const supplier = profile.role === "supplier";
+  const supplier = supplierView;
 
   const stockHref = supplier ? "/inventory" : "/catalog";
   const requestsHref = supplier ? "/approvals" : "/requests";
@@ -155,6 +161,16 @@ export default async function DashboardPage() {
             {n(occupiedCount(grid))} / {n(TOTAL_BINS)}
           </Row>
           <Row label="Value in custody">{money(values.held.total)}</Row>
+          {moves ? (
+            <>
+              <Row label={`Inbound, last ${moves.days} days`}>
+                {signedQty("in", moves.inbound)}
+              </Row>
+              <Row label={`Outbound, last ${moves.days} days`}>
+                {signedQty("out", moves.outbound)}
+              </Row>
+            </>
+          ) : null}
         </Card>
       </div>
     </div>
