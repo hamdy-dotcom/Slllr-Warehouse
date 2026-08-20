@@ -107,7 +107,7 @@ function RecordDialog({
 
   const quantity = Number(qty);
   const outcome =
-    isRelease && chosen ? releaseOutcome(quantity, chosen.qty_approved) : null;
+    isRelease && chosen ? releaseOutcome(quantity, chosen.outstanding) : null;
 
   // What the shelf looks like afterwards, so the guard is visible up front.
   const after =
@@ -125,6 +125,12 @@ function RecordDialog({
       : isRelease && Number.isInteger(quantity) && quantity > 0
         ? Math.max(0, product.reserved_qty - quantity)
         : product.reserved_qty;
+
+  // Releasing does not change what was approved; it moves released up.
+  const releasedAfter = chosen
+    ? chosen.qty_released +
+      (Number.isInteger(quantity) && quantity > 0 ? quantity : 0)
+    : 0;
 
   const breachesReserve =
     !inbound && after !== null && product !== null && after < reservedAfter;
@@ -304,7 +310,8 @@ function RecordDialog({
                     </option>
                     {options.map((option) => (
                       <option key={option.id} value={option.id}>
-                        {n(option.qty_approved)} units approved
+                        {n(option.outstanding)} outstanding of{" "}
+                        {n(option.qty_approved)} approved
                         {option.note ? ` · ${option.note}` : ""}
                       </option>
                     ))}
@@ -362,6 +369,34 @@ function RecordDialog({
                   ) : (
                     <> · {n(product.reserved_qty)} stays reserved for Sllr</>
                   )}
+                </Note>
+              ) : null}
+
+              {chosen ? (
+                <Note calm>
+                  <div className="mb-1 font-medium">This request</div>
+                  <div className="flex flex-wrap gap-x-[18px] gap-y-[2px]">
+                    <span>Requested {n(chosen.qty_requested)}</span>
+                    <span>Approved {n(chosen.qty_approved)}</span>
+                    <span>
+                      Released {n(chosen.qty_released)}
+                      {releasedAfter !== chosen.qty_released ? (
+                        <>
+                          {" "}
+                          → <b>{n(releasedAfter)}</b>
+                        </>
+                      ) : null}
+                    </span>
+                    <span>
+                      Outstanding {n(chosen.outstanding)}
+                      {outcome?.valid ? (
+                        <>
+                          {" "}
+                          → <b>{n(chosen.outstanding - quantity)}</b>
+                        </>
+                      ) : null}
+                    </span>
+                  </div>
                 </Note>
               ) : null}
 

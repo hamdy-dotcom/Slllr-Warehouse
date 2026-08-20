@@ -55,7 +55,9 @@ export default async function RequestsPage() {
         <div className="flex flex-wrap items-end justify-between gap-[18px]">
           <div className="flex flex-wrap items-end gap-x-[42px] gap-y-[14px]">
             <div>
-              <div className="text-label text-ink-2">In custody, approved</div>
+              <div className="text-label text-ink-2">
+                In custody, still outstanding
+              </div>
               <div className="text-kpi font-medium text-orange">
                 {money(held.total)}
               </div>
@@ -98,6 +100,8 @@ export default async function RequestsPage() {
                   <th className={TH}>Unit cost</th>
                   <th className={TH}>Requested</th>
                   <th className={TH}>Approved</th>
+                  <th className={TH}>Released</th>
+                  <th className={TH}>Outstanding</th>
                   <th className={TH}>Value</th>
                   <th className={TH}>Hold until</th>
                   <th className={TH}>Sent</th>
@@ -116,6 +120,13 @@ export default async function RequestsPage() {
                     request.status === "approved" &&
                     request.qty_approved !== null &&
                     request.qty_approved < request.qty_requested;
+
+                  // Approved is immutable once approved; releasing moves
+                  // released up and outstanding down. All four are shown so no
+                  // single figure has to carry two meanings.
+                  const approved = request.qty_approved ?? 0;
+                  const released = request.qty_released ?? 0;
+                  const outstanding = approved - released;
 
                   return (
                     <tr key={request.id}>
@@ -163,6 +174,30 @@ export default async function RequestsPage() {
                           </span>
                         )}
                       </td>
+                      <td className={`${TD} tabular-nums`}>
+                        {released === 0 ? (
+                          <span className="text-ink-3">—</span>
+                        ) : (
+                          <b className="font-medium">{n(released)}</b>
+                        )}
+                      </td>
+
+                      <td className={`${TD} tabular-nums`}>
+                        {request.qty_approved === null ? (
+                          <span className="text-ink-3">—</span>
+                        ) : (
+                          <b
+                            className={
+                              outstanding > 0
+                                ? "font-medium text-orange"
+                                : "font-normal text-ink-3"
+                            }
+                          >
+                            {n(outstanding)}
+                          </b>
+                        )}
+                      </td>
+
                       <td
                         className={`${TD} tabular-nums ${
                           request.unit_cost === null
@@ -172,7 +207,9 @@ export default async function RequestsPage() {
                       >
                         {money(
                           lineValue(
-                            request.qty_approved ?? request.qty_requested,
+                            request.qty_approved === null
+                              ? request.qty_requested
+                              : outstanding,
                             request.unit_cost,
                           ),
                         )}

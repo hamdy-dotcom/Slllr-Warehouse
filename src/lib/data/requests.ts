@@ -155,7 +155,7 @@ export async function requestValues(): Promise<RequestValues> {
 
   const { data, error } = await supabase
     .from("reserve_requests")
-    .select("status, qty_requested, qty_approved, unit_cost")
+    .select("status, qty_requested, qty_approved, qty_released, unit_cost")
     .in("status", ["approved", "pending"]);
 
   if (error) throw new Error(`Could not value requests: ${error.message}`);
@@ -163,9 +163,11 @@ export async function requestValues(): Promise<RequestValues> {
   const rows = data ?? [];
 
   return {
+    // Outstanding, not approved: units already released have left the shelf
+    // and are being settled through the wallet, so they are no longer held.
     held: rollValue(
       rows.filter((row) => row.status === "approved"),
-      (row) => row.qty_approved ?? 0,
+      (row) => (row.qty_approved ?? 0) - (row.qty_released ?? 0),
       (row) => row.unit_cost,
     ),
     asked: rollValue(

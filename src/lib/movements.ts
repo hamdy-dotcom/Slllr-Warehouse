@@ -62,34 +62,39 @@ export function signedQty(direction: Direction, qty: number): string {
 }
 
 /**
- * What a release does to the request behind it — the sentence the supplier
- * sees before confirming, because the outcome differs by a single unit.
+ * What a release does to the request behind it.
+ *
+ * Approved is immutable once a request is approved — releasing moves
+ * `qty_released` up, and outstanding (`qty_approved - qty_released`) is what
+ * falls. The sentence says so, because the old behaviour mutated the approved
+ * figure and that is the thing people will expect to see change.
  */
 export function releaseOutcome(
   qty: number,
-  approvedQty: number,
+  outstandingQty: number,
 ): { valid: boolean; message: string } {
+  const size = (value: number) => value.toLocaleString("en-US");
+
   if (!Number.isInteger(qty) || qty < 1) {
     return { valid: false, message: "Enter a quantity of at least 1." };
   }
 
-  if (qty > approvedQty) {
+  if (qty > outstandingQty) {
     return {
       valid: false,
-      message: `That request only has ${approvedQty.toLocaleString("en-US")} units approved.`,
+      message: `That request only has ${size(outstandingQty)} units still outstanding.`,
     };
   }
 
-  if (qty === approvedQty) {
+  if (qty === outstandingQty) {
     return {
       valid: true,
-      message: `Releases the whole request. It is marked consumed and stops counting towards Reserved for Sllr.`,
+      message: `Releases everything still outstanding. Approved stays as it is, released rises to match it, and the request is marked consumed.`,
     };
   }
 
-  const left = approvedQty - qty;
   return {
     valid: true,
-    message: `Partial release. The request drops to ${left.toLocaleString("en-US")} units and stays reserved for Sllr.`,
+    message: `Partial release. Approved does not change — outstanding falls to ${size(outstandingQty - qty)} and stays reserved for Sllr.`,
   };
 }

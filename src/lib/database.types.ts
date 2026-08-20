@@ -59,6 +59,13 @@ export type Database = {
             foreignKeyName: "products_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
+            referencedRelation: "supplier_wallet"
+            referencedColumns: ["supplier_id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
@@ -91,6 +98,13 @@ export type Database = {
             foreignKeyName: "profiles_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
+            referencedRelation: "supplier_wallet"
+            referencedColumns: ["supplier_id"]
+          },
+          {
+            foreignKeyName: "profiles_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
@@ -107,6 +121,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_released: number
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
@@ -122,6 +137,7 @@ export type Database = {
           note?: string | null
           product_id: string
           qty_approved?: number | null
+          qty_released?: number
           qty_requested: number
           requested_by: string
           status?: Database["public"]["Enums"]["request_status"]
@@ -137,6 +153,7 @@ export type Database = {
           note?: string | null
           product_id?: string
           qty_approved?: number | null
+          qty_released?: number
           qty_requested?: number
           requested_by?: string
           status?: Database["public"]["Enums"]["request_status"]
@@ -173,6 +190,97 @@ export type Database = {
           },
         ]
       }
+      settlements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["settlement_kind"]
+          movement_id: string
+          note: string | null
+          occurred_on: string
+          product_id: string
+          qty: number
+          reference: string | null
+          supplier_id: string
+          unit_cost: number | null
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["settlement_kind"]
+          movement_id: string
+          note?: string | null
+          occurred_on?: string
+          product_id: string
+          qty: number
+          reference?: string | null
+          supplier_id: string
+          unit_cost?: number | null
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["settlement_kind"]
+          movement_id?: string
+          note?: string | null
+          occurred_on?: string
+          product_id?: string
+          qty?: number
+          reference?: string | null
+          supplier_id?: string
+          unit_cost?: number | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_wallet"
+            referencedColumns: ["supplier_id"]
+          },
+          {
+            foreignKeyName: "settlements_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           actor: string | null
@@ -184,9 +292,11 @@ export type Database = {
           note: string | null
           product_id: string
           qty_after: number
+          qty_settled: number
           reason: string
           reference: string | null
           request_id: string | null
+          unit_cost: number | null
         }
         Insert: {
           actor?: string | null
@@ -198,9 +308,11 @@ export type Database = {
           note?: string | null
           product_id: string
           qty_after: number
+          qty_settled?: number
           reason: string
           reference?: string | null
           request_id?: string | null
+          unit_cost?: number | null
         }
         Update: {
           actor?: string | null
@@ -212,9 +324,11 @@ export type Database = {
           note?: string | null
           product_id?: string
           qty_after?: number
+          qty_settled?: number
           reason?: string
           reference?: string | null
           request_id?: string | null
+          unit_cost?: number | null
         }
         Relationships: [
           {
@@ -243,6 +357,64 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "reserve_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          method: string | null
+          note: string | null
+          paid_on: string
+          reference: string | null
+          supplier_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string | null
+          note?: string | null
+          paid_on?: string
+          reference?: string | null
+          supplier_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string | null
+          note?: string | null
+          paid_on?: string
+          reference?: string | null
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_wallet"
+            referencedColumns: ["supplier_id"]
+          },
+          {
+            foreignKeyName: "supplier_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -276,6 +448,8 @@ export type Database = {
           free_qty: number | null
           id: string | null
           image_url: string | null
+          in_progress_qty: number | null
+          in_progress_value: number | null
           is_active: boolean | null
           name: string | null
           pending_qty: number | null
@@ -293,10 +467,32 @@ export type Database = {
             foreignKeyName: "products_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
+            referencedRelation: "supplier_wallet"
+            referencedColumns: ["supplier_id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
+      }
+      supplier_wallet: {
+        Row: {
+          balance: number | null
+          delivered_qty: number | null
+          delivered_value: number | null
+          in_progress_qty: number | null
+          in_progress_value: number | null
+          paid_total: number | null
+          returned_qty: number | null
+          returned_value: number | null
+          supplier_id: string | null
+          supplier_name: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -312,6 +508,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_released: number
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
@@ -344,6 +541,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_released: number
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
@@ -373,6 +571,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_released: number
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
@@ -387,6 +586,14 @@ export type Database = {
       }
       my_role: { Args: never; Returns: Database["public"]["Enums"]["app_role"] }
       my_supplier: { Args: never; Returns: string }
+      record_settlements: {
+        Args: { p_rows: Json }
+        Returns: {
+          message: string
+          ok: boolean
+          sku: string
+        }[]
+      }
       record_stock_movements: {
         Args: { p_rows: Json }
         Returns: {
@@ -394,6 +601,33 @@ export type Database = {
           ok: boolean
           sku: string
         }[]
+      }
+      record_supplier_payment: {
+        Args: {
+          p_amount: number
+          p_method?: string
+          p_note?: string
+          p_paid_on?: string
+          p_reference?: string
+          p_supplier_id: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          method: string | null
+          note: string | null
+          paid_on: string
+          reference: string | null
+          supplier_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplier_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       reject_reserve_request: {
         Args: { p_note?: string; p_request_id: string }
@@ -407,6 +641,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_released: number
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
@@ -436,6 +671,7 @@ export type Database = {
         | "rejected"
         | "cancelled"
         | "consumed"
+      settlement_kind: "delivered" | "returned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -580,6 +816,7 @@ export const Constants = {
         "cancelled",
         "consumed",
       ],
+      settlement_kind: ["delivered", "returned"],
     },
   },
 } as const
