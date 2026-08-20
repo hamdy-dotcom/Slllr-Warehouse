@@ -242,13 +242,35 @@ by the database — a supplier querying the view directly gets every row.
 refuses an over-delivery without writing anything. The app-side check in
 `recordDaily` stays as defence in depth, but nothing depends on it any more.
 
-**Known issue in `bulk_update_stock`.** It measures the reserve gross rather
-than net of dispatches, so it refuses a reduction it should allow. On a product
-with 60 approved and 50 already dispatched — 10 outstanding, and the 50 long
-gone from the shelf — setting the total to 30 is refused with "Cannot go below
-the 60 units already reserved". `guard_total_qty` gets this right; a direct
-update to 30 is accepted. The check inside the RPC needs the same
-`- qty_released` the trigger now applies.
+`bulk_update_stock` and `guard_total_qty` both measure the reserve net of
+dispatches, so the floor is what is still outstanding rather than what was
+originally approved. On a product with 60 approved and 50 dispatched, 30 is
+accepted and 5 is refused with "Cannot go below the 10 units still reserved
+for Sllr".
+
+### Who can see what
+
+Every supplier-scoped table and view is scoped in the database, not just in
+the app. Audited by signing in as a supplier and querying the API directly:
+
+| | supplier sees | of |
+|---|---|---|
+| `products`, `product_stock` | 60 | 100 |
+| `stock_movements` | 72 | 112 |
+| `reserve_requests`, `reserve_request_dispatch` | 81 | 135 |
+| `settlements`, `supplier_payments`, `supplier_wallet` | own rows only | — |
+| `profiles` | self only | — |
+| `suppliers` | all — shared by design, names only | 3 |
+
+Settlements and payments were confirmed by planting rows for another supplier
+and checking they stayed invisible, not merely by counting a table that only
+had one supplier's rows in it. Writes are scoped too: a supplier updating or
+deleting another supplier's product matches no rows.
+
+One consequence of `supplier_wallet` filtering on `my_role()` / `my_supplier()`
+is that the service role sees **zero** rows, because it has no `auth.uid()`.
+Anything server-side that needs the whole table — a report, a cron job — has to
+read the underlying tables instead.
 
 ### Layout toggle
 

@@ -23,9 +23,10 @@ export type SupplierOption = { id: string; name: string };
 /**
  * Every wallet the caller may look at.
  *
- * `supplier_wallet` is not scoped by the database — a supplier reading it
- * directly gets every row — so the scoping is applied here. That protects the
- * screens; it does not protect the API, which is worth fixing in the view.
+ * `supplier_wallet` now carries its own WHERE clause, so a supplier querying
+ * it straight at the API gets only its own row. The filter here is kept as a
+ * second lock rather than the only one — and it is what makes a Sllr user's
+ * supplier picker work, since they can see them all.
  */
 export async function listWallets(profile: SessionProfile): Promise<Wallet[]> {
   const supabase = await createClient();
