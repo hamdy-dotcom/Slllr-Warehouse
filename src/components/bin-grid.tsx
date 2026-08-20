@@ -28,7 +28,8 @@ export function BinGrid({ grid }: { grid: Bin[][] }) {
 
   return (
     <>
-      <div className="scroll-x flex gap-4 pt-3">
+      {/* min-w-0 so this scroller can be narrower than the lines it holds. */}
+      <div className="scroll-x flex min-w-0 gap-4 pt-3">
         {grid.map((line) => (
           <div key={line[0].line} className="min-w-[74px]">
             <div className="mb-[7px] text-meta text-ink-2">

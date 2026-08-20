@@ -91,7 +91,14 @@ export default async function DashboardPage() {
           />
         </div>
 
-        <Card>
+        {/*
+          min-w-0 belongs on the card, not just on the column around it. The
+          card is a grid item, so its automatic minimum size is min-content —
+          which is the full width of all 8 line blocks. Without this the card
+          grows past its track and runs under the next column instead of
+          letting the bin grid scroll.
+        */}
+        <Card className="min-w-0">
           <div className="mb-[6px] flex flex-wrap items-center justify-between gap-[10px]">
             <SectionTitle>Warehouse layout</SectionTitle>
             <BinLegend />
