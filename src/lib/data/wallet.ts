@@ -211,7 +211,7 @@ export async function inProgressBySupplier(
 export type OutstandingLine = {
   sku: string;
   name: string;
-  /** `qty_approved - qty_released` summed over that product's approved requests. */
+  /** `qty_outstanding` summed over that product's approved requests. */
   outstanding_qty: number;
   outstanding_value: number;
   /** Oldest approved request first — the order a dispatch allocates in. */
@@ -232,9 +232,9 @@ export async function outstandingBySupplier(
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("reserve_requests")
+    .from("reserve_request_dispatch")
     .select(
-      "id, qty_approved, qty_released, unit_cost, created_at, products!inner(sku, name, supplier_id)",
+      "id, qty_outstanding, outstanding_value, unit_cost, created_at, products!inner(sku, name, supplier_id)",
     )
     .eq("status", "approved")
     .eq("products.supplier_id", supplierId)
@@ -242,8 +242,8 @@ export async function outstandingBySupplier(
     .overrideTypes<
       {
         id: string;
-        qty_approved: number | null;
-        qty_released: number | null;
+        qty_outstanding: number | null;
+        outstanding_value: number | null;
         unit_cost: number | null;
         created_at: string;
         products: { sku: string; name: string; supplier_id: string };
@@ -255,7 +255,7 @@ export async function outstandingBySupplier(
   const bySku = new Map<string, OutstandingLine>();
 
   for (const row of data ?? []) {
-    const outstanding = (row.qty_approved ?? 0) - (row.qty_released ?? 0);
+    const outstanding = row.qty_outstanding ?? 0;
     if (outstanding <= 0) continue;
 
     const line = bySku.get(row.products.sku) ?? {
@@ -267,7 +267,7 @@ export async function outstandingBySupplier(
     };
 
     line.outstanding_qty += outstanding;
-    line.outstanding_value += outstanding * (row.unit_cost ?? 0);
+    line.outstanding_value += row.outstanding_value ?? 0;
     line.requests.push({
       id: row.id,
       outstanding,

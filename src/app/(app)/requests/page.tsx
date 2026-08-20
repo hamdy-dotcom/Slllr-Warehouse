@@ -123,12 +123,11 @@ export default async function RequestsPage() {
                     request.qty_approved < request.qty_requested;
 
                   // Approved is immutable once approved; dispatching moves
-                  // qty_released up and outstanding down. All four are shown so
-                  // no single figure has to carry two meanings. The column
-                  // keeps its database name — see docs/dispatch.sql.
-                  const approved = request.qty_approved ?? 0;
-                  const dispatched = request.qty_released ?? 0;
-                  const outstanding = approved - dispatched;
+                  // dispatched up and outstanding down. All four are shown so
+                  // no single figure has to carry two meanings. The words come
+                  // straight from reserve_request_dispatch.
+                  const dispatched = request.qty_dispatched;
+                  const outstanding = request.qty_outstanding ?? 0;
 
                   return (
                     <tr key={request.id}>

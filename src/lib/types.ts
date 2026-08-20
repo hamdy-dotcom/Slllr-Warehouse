@@ -15,6 +15,33 @@ export type Supplier = Tables["suppliers"]["Row"];
 export type Product = Tables["products"]["Row"];
 export type ReserveRequest = Tables["reserve_requests"]["Row"];
 
+/**
+ * `reserve_request_dispatch`, normalised.
+ *
+ * The view is where the database and the screens agree on words: the column is
+ * still `qty_released`, but everything reads it as `qty_dispatched` with
+ * `qty_outstanding` and the two values worked out alongside. Every column
+ * comes back nullable because Postgres cannot prove otherwise for a view.
+ */
+export type RequestDispatch = {
+  id: string;
+  product_id: string;
+  requested_by: string;
+  qty_requested: number;
+  qty_approved: number | null;
+  qty_dispatched: number;
+  qty_outstanding: number | null;
+  outstanding_value: number | null;
+  dispatched_value: number | null;
+  status: RequestStatus;
+  hold_until: string | null;
+  note: string | null;
+  unit_cost: number | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  created_at: string;
+};
+
 /** Postgres cannot prove a view column is NOT NULL, so every one comes back
  *  nullable. The data layer is the single place that normalises them. */
 export type ProductStockRow = Views["product_stock"]["Row"];

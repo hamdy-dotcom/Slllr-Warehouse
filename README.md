@@ -210,9 +210,11 @@ A dispatch is booked against approved requests oldest first, split across
 several when one row is larger than the oldest request, because
 `record_stock_movements` takes one request per movement.
 
-**Dispatch, not release.** The UI says dispatched throughout. The database
-still says `qty_released` and `release_sllr`; `docs/dispatch.sql` has a view
-exposing them under the new words without renaming anything.
+**Dispatch, not release.** The UI says dispatched throughout, and so does the
+database: request reads go through `reserve_request_dispatch`, which exposes
+`qty_released` as `qty_dispatched` alongside `qty_outstanding`,
+`outstanding_value`, and `dispatched_value`. The stored enum value is still
+`release_sllr` — only its label is Dispatch.
 
 ### Wallet and settlement
 
@@ -236,21 +238,17 @@ Sllr records; a supplier sees only its own wallet, read-only. That scoping is
 applied in `src/lib/data/wallet.ts` because `supplier_wallet` is **not** scoped
 by the database — a supplier querying the view directly gets every row.
 
-**Known issue in `record_settlements`.** It allocates FIFO and commits before
-deciding a row asked for more than is in progress, so a row it reports as
-refused has already settled everything available. Reproduced from a clean
-state: `[{sku: "SKU-1002", kind: "delivered", qty: 999}]` against 19 in
-progress returned `ok: false, "Only 19 units are in progress for this SKU"` and
-still created two settlement rows totalling 19. Until the function rolls back,
-`recordSettlements` checks every row against `in_progress_qty` first and never
-lets an over-delivery reach it.
+`record_settlements` now sums the open in-progress pool before allocating and
+refuses an over-delivery without writing anything. The app-side check in
+`recordDaily` stays as defence in depth, but nothing depends on it any more.
 
-**Known issue in `guard_total_qty`.** Its audit insert passes `direction` as
-text, so any direct `products.total_qty` update now fails with
-`column "direction" is of type movement_direction but expression is of type
-text`. That takes `bulk_update_stock` with it, and with it the inline quantity
-editor, the quantity field in the product dialog, and the inventory bulk CSV.
-`record_stock_movements` is unaffected.
+**Known issue in `bulk_update_stock`.** It measures the reserve gross rather
+than net of dispatches, so it refuses a reduction it should allow. On a product
+with 60 approved and 50 already dispatched — 10 outstanding, and the 50 long
+gone from the shelf — setting the total to 30 is refused with "Cannot go below
+the 60 units already reserved". `guard_total_qty` gets this right; a direct
+update to 30 is accepted. The check inside the RPC needs the same
+`- qty_released` the trigger now applies.
 
 ### Layout toggle
 

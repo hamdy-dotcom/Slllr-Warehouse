@@ -1,12 +1,38 @@
 import "server-only";
 
 import { rollValue, type ValueRoll } from "@/lib/money";
+import type { Database } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
-import type { ProductStock, ReserveRequest } from "@/lib/types";
+import type { ProductStock, RequestDispatch } from "@/lib/types";
 import { normaliseStock } from "@/lib/data/products";
 
 /** A request with the live stock position of the product it sits against. */
-export type RequestWithStock = ReserveRequest & { product: ProductStock };
+export type RequestWithStock = RequestDispatch & { product: ProductStock };
+
+/** The view's columns are all nullable; this is the one place that settles them. */
+type DispatchRow =
+  Database["public"]["Views"]["reserve_request_dispatch"]["Row"];
+
+function normaliseRequest(row: DispatchRow): RequestDispatch {
+  return {
+    id: row.id as string,
+    product_id: row.product_id as string,
+    requested_by: row.requested_by as string,
+    qty_requested: row.qty_requested ?? 0,
+    qty_approved: row.qty_approved,
+    qty_dispatched: row.qty_dispatched ?? 0,
+    qty_outstanding: row.qty_outstanding,
+    outstanding_value: row.outstanding_value,
+    dispatched_value: row.dispatched_value,
+    status: row.status as RequestDispatch["status"],
+    hold_until: row.hold_until,
+    note: row.note,
+    unit_cost: row.unit_cost,
+    decided_at: row.decided_at,
+    decision_note: row.decision_note,
+    created_at: row.created_at as string,
+  };
+}
 
 /**
  * Requests carry two foreign keys to the same product id — one to `products`
@@ -14,7 +40,7 @@ export type RequestWithStock = ReserveRequest & { product: ProductStock };
  * hint. Fetching the stock separately and stitching is clearer than the hint
  * syntax, and it is one extra round trip either way.
  */
-async function withStock(rows: ReserveRequest[]): Promise<RequestWithStock[]> {
+async function withStock(rows: RequestDispatch[]): Promise<RequestWithStock[]> {
   if (rows.length === 0) return [];
 
   const supabase = await createClient();
@@ -52,14 +78,14 @@ export async function listMyRequests(): Promise<RequestWithStock[]> {
   if (!user) return [];
 
   const { data, error } = await supabase
-    .from("reserve_requests")
+    .from("reserve_request_dispatch")
     .select("*")
     .eq("requested_by", user.id)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Could not load your requests: ${error.message}`);
 
-  return withStock(data ?? []);
+  return withStock((data ?? []).map(normaliseRequest));
 }
 
 /**
@@ -70,14 +96,14 @@ export async function listPendingApprovals(): Promise<RequestWithStock[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("reserve_requests")
+    .from("reserve_request_dispatch")
     .select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
   if (error) throw new Error(`Could not load approvals: ${error.message}`);
 
-  return withStock(data ?? []);
+  return withStock((data ?? []).map(normaliseRequest));
 }
 
 /** How many units the supplier could still grant against a product. */
@@ -154,8 +180,8 @@ export async function requestValues(): Promise<RequestValues> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("reserve_requests")
-    .select("status, qty_requested, qty_approved, qty_released, unit_cost")
+    .from("reserve_request_dispatch")
+    .select("status, qty_requested, qty_outstanding, unit_cost")
     .in("status", ["approved", "pending"]);
 
   if (error) throw new Error(`Could not value requests: ${error.message}`);
@@ -167,12 +193,12 @@ export async function requestValues(): Promise<RequestValues> {
     // and are being settled through the wallet, so they are no longer held.
     held: rollValue(
       rows.filter((row) => row.status === "approved"),
-      (row) => (row.qty_approved ?? 0) - (row.qty_released ?? 0),
+      (row) => row.qty_outstanding ?? 0,
       (row) => row.unit_cost,
     ),
     asked: rollValue(
       rows.filter((row) => row.status === "pending"),
-      (row) => row.qty_requested,
+      (row) => row.qty_requested ?? 0,
       (row) => row.unit_cost,
     ),
   };

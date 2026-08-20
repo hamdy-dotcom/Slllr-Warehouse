@@ -356,6 +356,13 @@ export type Database = {
             foreignKeyName: "stock_movements_request_id_fkey"
             columns: ["request_id"]
             isOneToOne: false
+            referencedRelation: "reserve_request_dispatch"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
             referencedRelation: "reserve_requests"
             referencedColumns: ["id"]
           },
@@ -475,6 +482,95 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reserve_request_dispatch: {
+        Row: {
+          created_at: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          dispatched_value: number | null
+          hold_until: string | null
+          id: string | null
+          note: string | null
+          outstanding_value: number | null
+          product_id: string | null
+          qty_approved: number | null
+          qty_dispatched: number | null
+          qty_outstanding: number | null
+          qty_requested: number | null
+          requested_by: string | null
+          status: Database["public"]["Enums"]["request_status"] | null
+          unit_cost: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          dispatched_value?: never
+          hold_until?: string | null
+          id?: string | null
+          note?: string | null
+          outstanding_value?: never
+          product_id?: string | null
+          qty_approved?: number | null
+          qty_dispatched?: number | null
+          qty_outstanding?: never
+          qty_requested?: number | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["request_status"] | null
+          unit_cost?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          dispatched_value?: never
+          hold_until?: string | null
+          id?: string | null
+          note?: string | null
+          outstanding_value?: never
+          product_id?: string | null
+          qty_approved?: number | null
+          qty_dispatched?: number | null
+          qty_outstanding?: never
+          qty_requested?: number | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["request_status"] | null
+          unit_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserve_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserve_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserve_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserve_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
