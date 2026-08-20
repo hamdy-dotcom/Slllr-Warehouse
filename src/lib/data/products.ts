@@ -18,11 +18,14 @@ export function normaliseStock(row: ProductStockRow): ProductStock {
     image_url: row.image_url,
     total_qty: row.total_qty ?? 0,
     is_active: row.is_active ?? true,
+    // Genuinely nullable, unlike the columns above — leave it alone.
+    unit_cost: row.unit_cost,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     reserved_qty: row.reserved_qty ?? 0,
     pending_qty: row.pending_qty ?? 0,
     free_qty: row.free_qty ?? 0,
+    stock_value: row.stock_value,
   };
 }
 

@@ -2,9 +2,16 @@ import type { Metadata } from "next";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
-import { Tag } from "@/components/ui/tag";
+import { Pill, Tag } from "@/components/ui/tag";
 import { listMyRequests } from "@/lib/data/requests";
 import { formatDate, n, relativeTime } from "@/lib/format";
+import {
+  lineValue,
+  money,
+  rollValue,
+  unitCost,
+  unpricedNote,
+} from "@/lib/money";
 import { CancelButton } from "./cancel-button";
 
 export const metadata: Metadata = { title: "My requests · Sllr warehouse" };
@@ -16,6 +23,24 @@ const TD = "border-t border-line px-[10px] py-[13px] align-middle";
 export default async function RequestsPage() {
   const requests = await listMyRequests();
 
+  // Approved is what Sllr actually holds; pending is what it has asked for.
+  // Each line uses its own snapshot, so a later cost edit cannot rewrite these.
+  const held = rollValue(
+    requests.filter((request) => request.status === "approved"),
+    (request) => request.qty_approved ?? 0,
+    (request) => request.unit_cost,
+  );
+  const asked = rollValue(
+    requests.filter((request) => request.status === "pending"),
+    (request) => request.qty_requested,
+    (request) => request.unit_cost,
+  );
+  const caveat = unpricedNote({
+    total: 0,
+    priced: held.priced + asked.priced,
+    unpriced: held.unpriced + asked.unpriced,
+  });
+
   return (
     <>
       <div className="mb-[18px]">
@@ -25,6 +50,28 @@ export default async function RequestsPage() {
           deducted before approval.
         </Muted>
       </div>
+
+      <Card className="mb-[14px]">
+        <div className="flex flex-wrap items-end justify-between gap-[18px]">
+          <div className="flex flex-wrap items-end gap-x-[42px] gap-y-[14px]">
+            <div>
+              <div className="text-label text-ink-2">In custody, approved</div>
+              <div className="text-kpi font-medium text-orange">
+                {money(held.total)}
+              </div>
+            </div>
+            <div>
+              <div className="text-label text-ink-2">
+                Requested, awaiting approval
+              </div>
+              <div className="text-kpi font-medium text-amber-ink">
+                {money(asked.total)}
+              </div>
+            </div>
+          </div>
+          {caveat ? <Pill tone="warn">{caveat}</Pill> : null}
+        </div>
+      </Card>
 
       <Card>
         <SectionTitle>Reserve requests</SectionTitle>
@@ -48,8 +95,10 @@ export default async function RequestsPage() {
               <thead>
                 <tr>
                   <th className={TH}>Product</th>
+                  <th className={TH}>Unit cost</th>
                   <th className={TH}>Requested</th>
                   <th className={TH}>Approved</th>
+                  <th className={TH}>Value</th>
                   <th className={TH}>Hold until</th>
                   <th className={TH}>Sent</th>
                   <th className={TH}>Note</th>
@@ -87,8 +136,18 @@ export default async function RequestsPage() {
                           </div>
                         </div>
                       </td>
+                      <td
+                        className={`${TD} tabular-nums ${
+                          request.unit_cost === null ? "text-ink-3" : ""
+                        }`}
+                      >
+                        {unitCost(request.unit_cost)}
+                      </td>
+
                       <td className={TD}>
-                        <b className="font-medium">{n(request.qty_requested)}</b>
+                        <b className="font-medium tabular-nums">
+                          {n(request.qty_requested)}
+                        </b>
                       </td>
                       <td className={TD}>
                         {request.qty_approved === null ? (
@@ -104,11 +163,28 @@ export default async function RequestsPage() {
                           </span>
                         )}
                       </td>
+                      <td
+                        className={`${TD} tabular-nums ${
+                          request.unit_cost === null
+                            ? "text-ink-3"
+                            : "font-medium"
+                        }`}
+                      >
+                        {money(
+                          lineValue(
+                            request.qty_approved ?? request.qty_requested,
+                            request.unit_cost,
+                          ),
+                        )}
+                      </td>
+
                       <td className={TD}>{formatDate(request.hold_until)}</td>
                       <td className={`${TD} text-label text-ink-2`}>
                         {relativeTime(request.created_at)}
                       </td>
-                      <td className={`${TD} max-w-[220px] text-label text-ink-2`}>
+                      <td
+                        className={`${TD} max-w-[220px] text-label text-ink-2`}
+                      >
                         {request.note || "—"}
                       </td>
                       <td className={TD}>

@@ -28,8 +28,10 @@ so it must never reach the browser — it is read only inside server actions.
 
 ### Database
 
-The schema in `docs/schema.sql` is already live. Do not re-run it or write
-migrations against it. Regenerate the types after any schema change:
+The schema in `docs/schema.sql` is already live, and the cost columns in
+`docs/cost-applied.sql` are applied on top of it. Neither is a migration to
+run — they record what is already there. Regenerate the types after any schema
+change:
 
 ```bash
 npm run types
@@ -105,20 +107,53 @@ restricted to same-origin paths.
   stay on screen.
 - **Warehouse codes are `L03-R02-B07`** — line 03, rack 02, bin 07. The layout
   page derives all 8 × 14 bins from them; nothing about the layout is stored.
+- **Cost is snapshotted onto a request.** `create_reserve_request` stamps
+  `products.unit_cost` onto `reserve_requests.unit_cost`. Re-pricing a product
+  changes what the shelf is worth; it must not change what an already agreed
+  reservation was worth.
 
 ### Bulk stock update
 
 The inventory page takes a pasted or uploaded CSV of `sku,total_qty` with an
-optional `warehouse_code`, previews the diff against what is on the shelf, then
-commits through `bulk_update_stock(p_rows jsonb)`. That RPC reports per row
-rather than failing the batch, so one bad SKU does not cost the others; the
-result table shows each row's outcome and a failed-row count. "Download CSV
-template" exports the supplier's current SKUs and quantities, so the round trip
-works without hand-typing a header.
+optional `warehouse_code` and `unit_cost`, previews the diff against what is on
+the shelf, then commits. Quantity and code go through
+`bulk_update_stock(p_rows jsonb)`, which reports per row rather than failing the
+batch. Cost is a plain column with no guard trigger behind it, so it is written
+with a direct update alongside.
+
+Because those are two separate writes, a row can half-succeed — a quantity
+below what is reserved is refused while the new price still lands. The result
+table says so per row (`Cannot go below the 1637 units already reserved · cost
+updated`) rather than reporting only one half.
+
+The cost cell has three states, because a blank cannot mean both "leave it" and
+"clear it": a number sets the price, blank leaves it alone, and `-` clears it
+back to not priced. "Download CSV template" exports the supplier's current
+SKUs, quantities, and costs, so the round trip works without hand-typing a
+header.
 
 Every single-row quantity change — the inline box on a row, and the quantity
 field in the edit dialog — goes through the same RPC, for the reason in the
 Database section above.
+
+### Cost and value
+
+Money is SAR throughout, formatted in `src/lib/money.ts` — two decimals for a
+unit price, none for a rolled-up value. Sllr sees the supplier's unit cost, not
+just the totals.
+
+Which cost a figure uses depends on what the figure means:
+
+| Figure | Source | Why |
+|---|---|---|
+| Stock value, free value | `products.unit_cost` today | what the shelf is worth now |
+| Reserved / in custody | the snapshot on each approved request | what it was agreed at |
+| Requested, awaiting approval | the snapshot on each pending request | what it was quoted at |
+
+`unit_cost` is nullable and "not priced yet" is a real state, so a value is
+never faked as zero. Every roll-up carries how many rows it could not price and
+the screen shows that as a caveat — `SAR 23,780,344 · 4 not priced` — rather
+than quietly reporting a total that is missing lines.
 
 ### Layout toggle
 

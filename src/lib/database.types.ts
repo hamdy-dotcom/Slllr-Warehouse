@@ -24,6 +24,7 @@ export type Database = {
           sku: string
           supplier_id: string
           total_qty: number
+          unit_cost: number | null
           updated_at: string
           warehouse_code: string
         }
@@ -36,6 +37,7 @@ export type Database = {
           sku: string
           supplier_id: string
           total_qty?: number
+          unit_cost?: number | null
           updated_at?: string
           warehouse_code: string
         }
@@ -48,6 +50,7 @@ export type Database = {
           sku?: string
           supplier_id?: string
           total_qty?: number
+          unit_cost?: number | null
           updated_at?: string
           warehouse_code?: string
         }
@@ -107,6 +110,7 @@ export type Database = {
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
+          unit_cost: number | null
         }
         Insert: {
           created_at?: string
@@ -121,6 +125,7 @@ export type Database = {
           qty_requested: number
           requested_by: string
           status?: Database["public"]["Enums"]["request_status"]
+          unit_cost?: number | null
         }
         Update: {
           created_at?: string
@@ -135,6 +140,7 @@ export type Database = {
           qty_requested?: number
           requested_by?: string
           status?: Database["public"]["Enums"]["request_status"]
+          unit_cost?: number | null
         }
         Relationships: [
           {
@@ -253,8 +259,10 @@ export type Database = {
           pending_qty: number | null
           reserved_qty: number | null
           sku: string | null
+          stock_value: number | null
           supplier_id: string | null
           total_qty: number | null
+          unit_cost: number | null
           updated_at: string | null
           warehouse_code: string | null
         }
@@ -285,6 +293,7 @@ export type Database = {
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
+          unit_cost: number | null
         }
         SetofOptions: {
           from: "*"
@@ -316,6 +325,7 @@ export type Database = {
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
+          unit_cost: number | null
         }
         SetofOptions: {
           from: "*"
@@ -344,6 +354,7 @@ export type Database = {
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
+          unit_cost: number | null
         }
         SetofOptions: {
           from: "*"
@@ -369,6 +380,7 @@ export type Database = {
           qty_requested: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
+          unit_cost: number | null
         }
         SetofOptions: {
           from: "*"

@@ -5,11 +5,18 @@ import { useFormStatus } from "react-dom";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, Input, Note, Textarea } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  Input,
+  Note,
+  Textarea,
+} from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { sendReserveRequest, type ReserveState } from "@/lib/actions/reserve";
 import { n } from "@/lib/format";
+import { lineValue, money, unitCost } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 
 export function ReserveButton({
@@ -123,6 +130,26 @@ function ReserveDialog({
         <Note calm={after >= 0}>
           Free now <b>{n(product.free_qty)}</b> → free after approval{" "}
           <b>{n(after)}</b>
+        </Note>
+
+        <Note calm>
+          {product.unit_cost === null ? (
+            <>
+              This product is not priced yet, so this request carries no value.
+            </>
+          ) : (
+            <>
+              {unitCost(product.unit_cost)} per unit → this request is worth{" "}
+              <b>
+                {money(
+                  lineValue(
+                    Number.isFinite(requested) && requested > 0 ? requested : 0,
+                    product.unit_cost,
+                  ),
+                )}
+              </b>
+            </>
+          )}
         </Note>
 
         <FieldError>{state.error}</FieldError>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ProductCard } from "@/components/product-card";
 import { ProductTable } from "@/components/product-table";
 import { ShelfToolbar } from "@/components/shelf-toolbar";
+import { ValueSummary } from "@/components/value-summary";
 import { ViewToggle } from "@/components/view-toggle";
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { requireSupplier } from "@/lib/auth";
@@ -50,6 +51,8 @@ export default async function InventoryPage({
         <BulkUpdateButton shelf={shelf} />
         <AddProductButton />
       </ShelfToolbar>
+
+      {visible.length > 0 ? <ValueSummary products={visible} /> : null}
 
       {visible.length === 0 ? (
         <Card>

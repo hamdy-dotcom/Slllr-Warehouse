@@ -30,6 +30,11 @@ export type ProductStock = Product & {
   reserved_qty: number;
   pending_qty: number;
   free_qty: number;
+  /**
+   * `total_qty * unit_cost`, straight from the view. Null when the product
+   * has no cost — "not priced yet" is a real state, not a zero.
+   */
+  stock_value: number | null;
 };
 
 /** A request joined to the product it sits against. */

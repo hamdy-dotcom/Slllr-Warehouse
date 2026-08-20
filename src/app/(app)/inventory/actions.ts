@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireSupplier } from "@/lib/auth";
+import { parseCost } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,6 +32,7 @@ export type ProductFormState = {
     sku: string;
     warehouse_code: string;
     total_qty: string;
+    unit_cost: string;
     is_active: boolean;
   };
 };
@@ -41,6 +43,7 @@ function submitted(formData: FormData): ProductFormState["values"] {
     sku: String(formData.get("sku") ?? ""),
     warehouse_code: String(formData.get("warehouse_code") ?? ""),
     total_qty: String(formData.get("total_qty") ?? ""),
+    unit_cost: String(formData.get("unit_cost") ?? ""),
     is_active: formData.get("is_active") === "on",
   };
 }
@@ -50,6 +53,8 @@ type Parsed = {
   sku: string;
   warehouse_code: string;
   total_qty: number;
+  /** Null is a real value here — the product is simply not priced yet. */
+  unit_cost: number | null;
   is_active: boolean;
 };
 
@@ -72,11 +77,17 @@ function parse(formData: FormData): Parsed | string {
     return "Enter the total units as a whole number of at least 0.";
   }
 
+  const unit_cost = parseCost(String(formData.get("unit_cost") ?? ""));
+  if (unit_cost === "invalid") {
+    return "Enter the unit cost as an amount of at least 0, or leave it blank.";
+  }
+
   return {
     name,
     sku,
     warehouse_code,
     total_qty,
+    unit_cost,
     is_active: formData.get("is_active") === "on",
   };
 }
@@ -335,6 +346,8 @@ export type BulkRow = {
   sku: string;
   total_qty: number;
   warehouse_code?: string;
+  /** number sets a price, null clears it, absent leaves it as it was. */
+  unit_cost?: number | null;
 };
 
 export type BulkResult = { sku: string; ok: boolean; message: string };
@@ -371,16 +384,103 @@ export async function bulkUpdateStock(
   await requireSupplier();
   const supabase = await createClient();
 
+  // The RPC only moves quantities and codes. Cost is a plain column with no
+  // guard trigger behind it, so it goes through a direct update — but only for
+  // the rows whose price actually changes.
   const { data, error } = await supabase.rpc("bulk_update_stock", {
-    p_rows: rows,
+    p_rows: rows.map(({ sku, total_qty, warehouse_code }) =>
+      warehouse_code ? { sku, total_qty, warehouse_code } : { sku, total_qty },
+    ),
   });
 
   if (error) return { error: explain(error.message) };
+
+  const results = [...(data ?? [])];
+  const costs = await applyCosts(rows);
+
+  // Quantity and cost are independent facts on a row, so one can land while
+  // the other is refused. Say so rather than reporting only half of it.
+  for (const [sku, outcome] of costs) {
+    const row = results.find((result) => result.sku === sku);
+
+    if (!row) {
+      results.push({ sku, ok: outcome.ok, message: outcome.message });
+      continue;
+    }
+
+    if (!outcome.ok) {
+      row.message = row.ok
+        ? outcome.message
+        : `${row.message} · cost not changed`;
+      row.ok = false;
+    } else {
+      row.message = `${row.message} · ${outcome.message}`;
+    }
+  }
 
   revalidatePath("/inventory");
   revalidatePath("/catalog");
   revalidatePath("/warehouse");
   revalidatePath("/dashboard");
+  revalidatePath("/requests");
+  revalidatePath("/approvals");
 
-  return { savedAt: Date.now(), results: data ?? [] };
+  return { savedAt: Date.now(), results };
+}
+
+type CostOutcome = { ok: boolean; message: string };
+
+/**
+ * Writes the cost column for the rows that carry one, skipping any whose price
+ * already matches. Only rows that actually moved come back, so an unchanged
+ * price adds no noise to the result table.
+ */
+async function applyCosts(rows: BulkRow[]): Promise<Map<string, CostOutcome>> {
+  const outcomes = new Map<string, CostOutcome>();
+  const wanted = rows.filter((row) => row.unit_cost !== undefined);
+  if (wanted.length === 0) return outcomes;
+
+  const profile = await requireSupplier();
+  const supabase = await createClient();
+
+  const { data: current, error } = await supabase
+    .from("products")
+    .select("sku, unit_cost")
+    .eq("supplier_id", profile.supplier_id)
+    .in(
+      "sku",
+      wanted.map((row) => row.sku),
+    );
+
+  if (error) {
+    for (const row of wanted) {
+      outcomes.set(row.sku, { ok: false, message: explain(error.message) });
+    }
+    return outcomes;
+  }
+
+  const now = new Map((current ?? []).map((row) => [row.sku, row.unit_cost]));
+
+  for (const row of wanted) {
+    if (!now.has(row.sku)) continue; // the RPC already reported this one
+    if (now.get(row.sku) === row.unit_cost) continue;
+
+    const { error: updateError } = await supabase
+      .from("products")
+      .update({ unit_cost: row.unit_cost })
+      .eq("supplier_id", profile.supplier_id)
+      .eq("sku", row.sku);
+
+    outcomes.set(
+      row.sku,
+      updateError
+        ? { ok: false, message: explain(updateError.message) }
+        : {
+            ok: true,
+            message: row.unit_cost === null ? "cost cleared" : "cost updated",
+          },
+    );
+  }
+
+  return outcomes;
 }

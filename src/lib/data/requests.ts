@@ -1,5 +1,6 @@
 import "server-only";
 
+import { rollValue, type ValueRoll } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductStock, ReserveRequest } from "@/lib/types";
 import { normaliseStock } from "@/lib/data/products";
@@ -131,4 +132,46 @@ export async function requestCounts(): Promise<RequestCounts> {
   }
 
   return counts;
+}
+
+export type RequestValues = {
+  /** Approved requests: what Sllr actually holds, at the cost agreed. */
+  held: ValueRoll;
+  /** Pending requests: what Sllr has asked for, at the cost quoted. */
+  asked: ValueRoll;
+};
+
+/**
+ * Value rolled from the snapshots on the requests themselves, not from
+ * today's product cost.
+ *
+ * This is the difference the snapshot was chosen for: re-pricing a product
+ * changes what the shelf is worth, but it must not change what an already
+ * agreed reservation was worth. RLS scopes the rows per role, the same way
+ * `requestCounts` does.
+ */
+export async function requestValues(): Promise<RequestValues> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reserve_requests")
+    .select("status, qty_requested, qty_approved, unit_cost")
+    .in("status", ["approved", "pending"]);
+
+  if (error) throw new Error(`Could not value requests: ${error.message}`);
+
+  const rows = data ?? [];
+
+  return {
+    held: rollValue(
+      rows.filter((row) => row.status === "approved"),
+      (row) => row.qty_approved ?? 0,
+      (row) => row.unit_cost,
+    ),
+    asked: rollValue(
+      rows.filter((row) => row.status === "pending"),
+      (row) => row.qty_requested,
+      (row) => row.unit_cost,
+    ),
+  };
 }

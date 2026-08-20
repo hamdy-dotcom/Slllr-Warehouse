@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ProductCard } from "@/components/product-card";
 import { ProductTable } from "@/components/product-table";
 import { ShelfToolbar } from "@/components/shelf-toolbar";
+import { ValueSummary } from "@/components/value-summary";
 import { ViewToggle } from "@/components/view-toggle";
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { listProductStock } from "@/lib/data/products";
@@ -42,6 +43,8 @@ export default async function CatalogPage({
       <ShelfToolbar q={q} filter={active}>
         <ViewToggle route={ROUTE} mode={view} />
       </ShelfToolbar>
+
+      {visible.length > 0 ? <ValueSummary products={visible} /> : null}
 
       {visible.length === 0 ? (
         <Card>

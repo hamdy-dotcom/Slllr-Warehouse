@@ -6,21 +6,28 @@ import { Kpi } from "@/components/ui/kpi";
 import { StockBar } from "@/components/ui/stock-bar";
 import { requireProfile } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
-import { requestCounts } from "@/lib/data/requests";
+import { requestCounts, requestValues } from "@/lib/data/requests";
 import { n, pct } from "@/lib/format";
-import { shelfTotals } from "@/lib/shelf";
+import { money, unpricedNote } from "@/lib/money";
+import { shelfTotals, shelfValues } from "@/lib/shelf";
 import { TOTAL_BINS, buildGrid, occupiedCount } from "@/lib/warehouse";
 
 export const metadata: Metadata = { title: "Dashboard · Sllr warehouse" };
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
-  const [shelf, counts] = await Promise.all([
+  const [shelf, counts, values] = await Promise.all([
     listProductStock(),
     requestCounts(),
+    requestValues(),
   ]);
 
   const totals = shelfTotals(shelf);
+  // Stock and free are what the shelf is worth today, so they use the current
+  // cost. Reserved and requested are what was agreed, so they come from the
+  // snapshots on the requests — re-pricing a product must not rewrite those.
+  const shelfWorth = shelfValues(shelf);
+  const unpriced = unpricedNote(shelfWorth.stock);
   const grid = buildGrid(shelf);
   const supplier = profile.role === "supplier";
 
@@ -51,10 +58,11 @@ export default async function DashboardPage() {
 
         <Kpi
           icon="📦"
-          label="Total stock"
-          value={n(totals.total)}
-          unit="units"
-          pill={`${n(totals.skus)} SKUs live`}
+          label="Stock value"
+          value={money(shelfWorth.stock.total)}
+          unit={`${n(totals.total)} units`}
+          pill={unpriced ?? `${n(totals.skus)} SKUs live`}
+          pillTone={unpriced ? "warn" : "good"}
           seed={1}
           href={stockHref}
         />
@@ -65,8 +73,8 @@ export default async function DashboardPage() {
           <Kpi
             icon="🔒"
             label="Reserved for Sllr"
-            value={n(totals.reserved)}
-            unit="units"
+            value={money(values.held.total)}
+            unit={`${n(totals.reserved)} units`}
             pill={`${pct(totals.reserved, totals.total)}% of shelf`}
             seed={2}
             href={requestsHref}
@@ -74,8 +82,8 @@ export default async function DashboardPage() {
           <Kpi
             icon="✅"
             label="Free stock"
-            value={n(totals.free)}
-            unit="units"
+            value={money(shelfWorth.free.total)}
+            unit={`${n(totals.free)} units`}
             pill={totals.free < 0 ? "oversold" : "available now"}
             pillTone={totals.free < 0 ? "hot" : "good"}
             seed={4}
@@ -99,9 +107,9 @@ export default async function DashboardPage() {
       <div className="grid gap-[14px]">
         <Kpi
           icon="⏳"
-          label="Pending approval"
-          value={n(totals.pending)}
-          unit="units"
+          label="Requested, awaiting approval"
+          value={money(values.asked.total)}
+          unit={`${n(totals.pending)} units`}
           pill={`${n(counts.pending)} ${
             counts.pending === 1 ? "request" : "requests"
           } waiting`}
@@ -139,6 +147,7 @@ export default async function DashboardPage() {
           <Row label="Bins in use">
             {n(occupiedCount(grid))} / {n(TOTAL_BINS)}
           </Row>
+          <Row label="Value in custody">{money(values.held.total)}</Row>
         </Card>
       </div>
     </div>

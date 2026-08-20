@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { parseStockCsv, toStockCsv, type CsvRow } from "@/lib/csv";
 import { n } from "@/lib/format";
+import { unitCost } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 import { bulkUpdateStock, type BulkResult } from "./actions";
 
@@ -18,6 +19,7 @@ type Diff = {
   current: ProductStock | null;
   qtyChanged: boolean;
   codeChanged: boolean;
+  costChanged: boolean;
 };
 
 export function BulkUpdateButton({ shelf }: { shelf: ProductStock[] }) {
@@ -74,6 +76,10 @@ function BulkDialog({
             !!current &&
             !!row.warehouse_code &&
             current.warehouse_code !== row.warehouse_code,
+          costChanged:
+            !!current &&
+            row.unit_cost !== undefined &&
+            current.unit_cost !== row.unit_cost,
         };
       }),
     [parsed.rows, bySku],
@@ -81,7 +87,7 @@ function BulkDialog({
 
   const unknown = diffs.filter((diff) => !diff.current).length;
   const changing = diffs.filter(
-    (diff) => diff.qtyChanged || diff.codeChanged,
+    (diff) => diff.qtyChanged || diff.codeChanged || diff.costChanged,
   ).length;
 
   function downloadTemplate() {
@@ -92,6 +98,7 @@ function BulkDialog({
           sku: product.sku,
           total_qty: product.total_qty,
           warehouse_code: product.warehouse_code,
+          unit_cost: product.unit_cost,
         })),
     );
 
@@ -148,8 +155,8 @@ function BulkDialog({
         Bulk update stock
       </div>
       <Muted className="mb-4">
-        Columns are sku, total_qty, and warehouse_code. The last one is
-        optional.
+        Columns are sku, total_qty, warehouse_code, and unit_cost. The last two
+        are optional — a blank cost leaves the price alone, a dash clears it.
       </Muted>
 
       {results ? (
@@ -187,7 +194,9 @@ function BulkDialog({
               setText(event.target.value);
               setError(null);
             }}
-            placeholder={"sku,total_qty,warehouse_code\nSKU-1001,320,L01-R01-B01"}
+            placeholder={
+              "sku,total_qty,warehouse_code,unit_cost\nSKU-1001,320,L01-R01-B01,69.25"
+            }
             aria-label="Paste CSV"
             className="mb-[13px] font-mono text-meta"
           />
@@ -223,6 +232,7 @@ function BulkDialog({
                       <th className={TH}>SKU</th>
                       <th className={TH}>Total</th>
                       <th className={TH}>Warehouse code</th>
+                      <th className={TH}>Unit cost</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -253,7 +263,9 @@ function BulkDialog({
                               </b>
                             </>
                           ) : (
-                            <b className="font-medium">{n(diff.row.total_qty)}</b>
+                            <b className="font-medium">
+                              {n(diff.row.total_qty)}
+                            </b>
                           )}
                         </td>
                         <td className={`${TD} font-mono text-meta`}>
@@ -273,6 +285,23 @@ function BulkDialog({
                             )
                           ) : (
                             <span className="text-ink-3">unchanged</span>
+                          )}
+                        </td>
+                        <td className={`${TD} tabular-nums`}>
+                          {diff.row.unit_cost === undefined ? (
+                            <span className="text-ink-3">unchanged</span>
+                          ) : diff.costChanged && diff.current ? (
+                            <>
+                              <span className="text-ink-3">
+                                {unitCost(diff.current.unit_cost)}
+                              </span>
+                              <span className="mx-1 text-ink-3">→</span>
+                              <b className="font-medium text-orange">
+                                {unitCost(diff.row.unit_cost)}
+                              </b>
+                            </>
+                          ) : (
+                            unitCost(diff.row.unit_cost)
                           )}
                         </td>
                       </tr>
@@ -328,14 +357,13 @@ function Results({
       {failedCount > 0 ? (
         <Note>
           {failedCount === 1
-            ? "1 row failed and was left as it was."
-            : `${n(failedCount)} rows failed and were left as they were.`}{" "}
-          The rest went through.
+            ? "1 row did not fully go through."
+            : `${n(failedCount)} rows did not fully go through.`}{" "}
+          Quantity and cost are applied separately, so read each row below for
+          what actually changed.
         </Note>
       ) : (
-        <Note calm>
-          All {n(results.length)} rows went through.
-        </Note>
+        <Note calm>All {n(results.length)} rows went through.</Note>
       )}
 
       <div className="scroll-x mb-[13px] max-h-[280px] overflow-y-auto">

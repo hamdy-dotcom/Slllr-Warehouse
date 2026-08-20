@@ -15,6 +15,7 @@ import { Modal } from "@/components/ui/modal";
 import { Muted } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { n } from "@/lib/format";
+import { CURRENCY, lineValue, money } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 import {
   addProduct,
@@ -200,6 +201,22 @@ function ProductDialog({
           />
         </Field>
 
+        <Field
+          label={`Unit cost (${CURRENCY})`}
+          htmlFor="unit_cost"
+          hint="Leave blank if this product is not priced yet."
+        >
+          <Input
+            id="unit_cost"
+            name="unit_cost"
+            type="number"
+            min={0}
+            step="0.01"
+            defaultValue={v?.unit_cost ?? product?.unit_cost ?? ""}
+            placeholder="0.00"
+          />
+        </Field>
+
         <ImageField
           currentUrl={product?.image_url ?? null}
           productName={product?.name ?? "New product"}
@@ -219,6 +236,16 @@ function ProductDialog({
             Reserved {n(product.reserved_qty)} · pending{" "}
             {n(product.pending_qty)}. Total cannot go below what is already
             reserved.
+            {product.unit_cost === null ? null : (
+              <>
+                {" "}
+                Sllr holds{" "}
+                <b>
+                  {money(lineValue(product.reserved_qty, product.unit_cost))}
+                </b>{" "}
+                of this product in custody.
+              </>
+            )}
           </Note>
         ) : null}
 

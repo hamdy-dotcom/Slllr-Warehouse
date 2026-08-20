@@ -1,6 +1,7 @@
 import { ProductThumb } from "@/components/product-thumb";
 import { StockBar } from "@/components/ui/stock-bar";
 import { n } from "@/lib/format";
+import { lineValue, money, unitCost } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 
 /**
@@ -43,6 +44,19 @@ export function ProductCard({
         <div className="font-mono text-meta text-ink-3">{product.sku}</div>
       </div>
 
+      <div className="flex items-center justify-between text-th text-ink-2">
+        <span>Unit cost</span>
+        <b
+          className={
+            product.unit_cost === null
+              ? "font-normal text-ink-3"
+              : "font-medium text-ink"
+          }
+        >
+          {unitCost(product.unit_cost)}
+        </b>
+      </div>
+
       <StockBar
         reserved={product.reserved_qty}
         pending={product.pending_qty}
@@ -71,6 +85,19 @@ export function ProductCard({
             {n(product.free_qty)}
           </b>
         </span>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-line pt-[9px] text-th text-ink-2">
+        <span>Reserved value</span>
+        <b
+          className={
+            product.unit_cost === null
+              ? "font-normal text-ink-3"
+              : "font-medium text-orange"
+          }
+        >
+          {money(lineValue(product.reserved_qty, product.unit_cost))}
+        </b>
       </div>
 
       {action}

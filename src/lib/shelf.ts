@@ -2,6 +2,7 @@
  * Pure shelf vocabulary — no database access, so both the server pages and the
  * client toolbar can import it.
  */
+import { rollValue, type ValueRoll } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 
 export type ShelfFilter = "all" | "low" | "reserved";
@@ -52,6 +53,30 @@ export type ShelfTotals = {
   free: number;
   skus: number;
 };
+
+/**
+ * What the shelf is worth, split the same way the quantities are.
+ *
+ * Each roll carries how many SKUs it could not price, so a screen can show
+ * the caveat instead of quietly reporting a total that is missing lines.
+ */
+export type ShelfValues = {
+  stock: ValueRoll;
+  reserved: ValueRoll;
+  pending: ValueRoll;
+  free: ValueRoll;
+};
+
+export function shelfValues(rows: ProductStock[]): ShelfValues {
+  const cost = (row: ProductStock) => row.unit_cost;
+
+  return {
+    stock: rollValue(rows, (row) => row.total_qty, cost),
+    reserved: rollValue(rows, (row) => row.reserved_qty, cost),
+    pending: rollValue(rows, (row) => row.pending_qty, cost),
+    free: rollValue(rows, (row) => row.free_qty, cost),
+  };
+}
 
 /** Shelf-wide roll-up. Free is allowed to go negative — that is oversold. */
 export function shelfTotals(rows: ProductStock[]): ShelfTotals {

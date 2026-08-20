@@ -1,5 +1,6 @@
 import { ProductMini } from "@/components/product-thumb";
 import { n } from "@/lib/format";
+import { lineValue, money, unitCost } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 
 const TH =
@@ -34,10 +35,12 @@ export function ProductTable({
           <tr>
             <th className={TH}>Product</th>
             <th className={TH}>Warehouse code</th>
+            <th className={TH}>Unit cost</th>
             <th className={TH}>Total</th>
             <th className={TH}>Reserved</th>
             <th className={TH}>Pending</th>
             <th className={TH}>Free</th>
+            <th className={TH}>Reserved value</th>
             {trailing.map((column) => (
               <th key={column.header} className={TH}>
                 {column.header ? (
@@ -75,6 +78,14 @@ export function ProductTable({
                 {product.warehouse_code}
               </td>
 
+              <td
+                className={`${TD} tabular-nums ${
+                  product.unit_cost === null ? "text-ink-3" : ""
+                }`}
+              >
+                {unitCost(product.unit_cost)}
+              </td>
+
               <td className={TD}>
                 {totalCell ? (
                   totalCell(product)
@@ -103,6 +114,16 @@ export function ProductTable({
                 >
                   {n(product.free_qty)}
                 </b>
+              </td>
+
+              <td
+                className={`${TD} tabular-nums ${
+                  product.unit_cost === null
+                    ? "text-ink-3"
+                    : "font-medium text-orange"
+                }`}
+              >
+                {money(lineValue(product.reserved_qty, product.unit_cost))}
               </td>
 
               {trailing.map((column, index) => (
