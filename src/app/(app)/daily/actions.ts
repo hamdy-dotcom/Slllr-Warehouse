@@ -27,7 +27,6 @@ function revalidateAll() {
   revalidatePath("/catalog");
   revalidatePath("/dashboard");
   revalidatePath("/requests");
-  revalidatePath("/warehouse");
 }
 
 /**

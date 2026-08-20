@@ -137,7 +137,6 @@ export async function addProduct(
 
   revalidatePath("/inventory");
   revalidatePath("/catalog");
-  revalidatePath("/warehouse");
   revalidatePath("/dashboard");
 
   return { savedAt: Date.now(), productId: data.id };
@@ -189,7 +188,6 @@ export async function updateProduct(
 
   revalidatePath("/inventory");
   revalidatePath("/catalog");
-  revalidatePath("/warehouse");
   revalidatePath("/dashboard");
 
   return { savedAt: Date.now(), productId: id };
@@ -268,7 +266,6 @@ export async function uploadProductImage(
 
   revalidatePath("/inventory");
   revalidatePath("/catalog");
-  revalidatePath("/warehouse");
   revalidatePath("/dashboard");
   revalidatePath("/requests");
   revalidatePath("/approvals");
@@ -329,7 +326,6 @@ export async function updateStockQty(
 
   revalidatePath("/inventory");
   revalidatePath("/catalog");
-  revalidatePath("/warehouse");
   revalidatePath("/dashboard");
 
   return { savedAt: Date.now(), total_qty };
@@ -420,7 +416,6 @@ export async function bulkUpdateStock(
 
   revalidatePath("/inventory");
   revalidatePath("/catalog");
-  revalidatePath("/warehouse");
   revalidatePath("/dashboard");
   revalidatePath("/requests");
   revalidatePath("/approvals");

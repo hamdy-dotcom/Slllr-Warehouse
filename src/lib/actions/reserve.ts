@@ -20,7 +20,6 @@ function revalidateAll() {
   revalidatePath("/requests");
   revalidatePath("/inventory");
   revalidatePath("/approvals");
-  revalidatePath("/warehouse");
 }
 
 /** Turns a Postgres exception into copy that says what to do next. */

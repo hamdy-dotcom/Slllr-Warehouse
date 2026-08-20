@@ -10,7 +10,6 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/requests", label: "My requests" },
     { href: "/wallet", label: "Wallet" },
     { href: "/daily", label: "Daily update" },
-    { href: "/warehouse", label: "Warehouse layout" },
   ],
   supplier: [
     { href: "/dashboard", label: "Dashboard" },
@@ -18,7 +17,6 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/movements", label: "Movements" },
     { href: "/wallet", label: "Wallet" },
     { href: "/approvals", label: "Approvals" },
-    { href: "/warehouse", label: "Warehouse layout" },
   ],
   admin: [
     { href: "/dashboard", label: "Dashboard" },
@@ -28,7 +26,6 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/movements", label: "Movements" },
     { href: "/wallet", label: "Wallet" },
     { href: "/approvals", label: "Approvals" },
-    { href: "/warehouse", label: "Warehouse layout" },
   ],
 };
 
@@ -42,7 +39,6 @@ const ACCESS: Record<string, readonly AppRole[]> = {
   "/approvals": ["supplier", "admin"],
   "/wallet": ["sllr", "supplier", "admin"],
   "/daily": ["sllr", "admin"],
-  "/warehouse": ["sllr", "supplier", "admin"],
 };
 
 /** Where a role lands with no route in mind. */

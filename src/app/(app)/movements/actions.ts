@@ -35,7 +35,6 @@ function revalidateAll() {
   revalidatePath("/inventory");
   revalidatePath("/catalog");
   revalidatePath("/dashboard");
-  revalidatePath("/warehouse");
   revalidatePath("/requests");
   revalidatePath("/approvals");
 }
