@@ -32,12 +32,20 @@ export function money(amount: number | null | undefined): string {
   return totalFormat.format(amount);
 }
 
-/** `qty x cost`, or null when the product has no cost set. */
+/**
+ * `qty x cost`, or null when there is nothing to report — either the product
+ * has no cost, or no units are involved.
+ *
+ * Zero units is not "SAR 0", it is "nothing reserved", and rendering a real
+ * amount there reads as a priced line worth nothing. A negative quantity is
+ * kept, because oversold stock has a real negative value.
+ */
 export function lineValue(
   qty: number,
   cost: number | null | undefined,
 ): number | null {
   if (cost === null || cost === undefined) return null;
+  if (qty === 0) return null;
   return qty * cost;
 }
 

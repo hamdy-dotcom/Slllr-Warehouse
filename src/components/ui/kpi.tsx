@@ -49,10 +49,18 @@ export function Kpi({
 
       <div className="text-label text-ink-2">{label}</div>
 
-      <div className="text-kpi font-medium">
-        {value}
+      {/*
+        The unit sits on its own line rather than inline. A money value and a
+        unit count are two numbers; side by side at 26px they run together and
+        wrap mid-number. Sizes stay as docs/DESIGN.md sets them — 26px value,
+        13px muted unit.
+      */}
+      <div>
+        <div className="text-kpi font-medium">{value}</div>
         {unit ? (
-          <small className="ml-1 text-body font-normal text-ink-3">{unit}</small>
+          <div className="mt-[2px] text-body font-normal text-ink-3">
+            {unit}
+          </div>
         ) : null}
       </div>
 

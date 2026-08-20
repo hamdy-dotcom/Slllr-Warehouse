@@ -3,28 +3,41 @@ import { Pill } from "@/components/ui/tag";
 import { money, unpricedNote, type ValueRoll } from "@/lib/money";
 import { shelfValues } from "@/lib/shelf";
 import type { ProductStock } from "@/lib/types";
+import { cn } from "@/lib/cn";
 
+/**
+ * One figure in the strip.
+ *
+ * The colour lives in a small swatch on the label, not in the number. Four
+ * 26px figures in four different colours read as four competing headlines;
+ * the swatches carry the same orange/amber coding as the stock bar while the
+ * amounts stay in ink and scan as one row.
+ */
 function Figure({
   label,
   roll,
-  tone,
+  swatch,
 }: {
   label: string;
   roll: ValueRoll;
-  tone?: "orange" | "amber";
+  swatch?: "orange" | "amber" | "track";
 }) {
   return (
     <div>
-      <div className="text-label text-ink-2">{label}</div>
-      <div
-        className={
-          tone === "orange"
-            ? "text-kpi font-medium text-orange"
-            : tone === "amber"
-              ? "text-kpi font-medium text-amber-ink"
-              : "text-kpi font-medium"
-        }
-      >
+      <div className="flex items-center gap-[6px] text-label text-ink-2">
+        {swatch ? (
+          <i
+            className={cn(
+              "inline-block h-[5px] w-[14px] shrink-0 rounded-[3px]",
+              swatch === "orange" && "bg-orange",
+              swatch === "amber" && "bg-amber",
+              swatch === "track" && "bg-track-deep",
+            )}
+          />
+        ) : null}
+        {label}
+      </div>
+      <div className="mt-[2px] text-kpi font-medium tabular-nums">
         {money(roll.total)}
       </div>
     </div>
@@ -34,27 +47,30 @@ function Figure({
 /**
  * What the shelf on screen is worth. Sits above both the catalog and the
  * inventory so the value moves with whatever search and filter are applied.
+ *
+ * Rendered on `card-soft` so it reads as a summary band rather than a second
+ * data card competing with the table underneath it.
  */
 export function ValueSummary({ products }: { products: ProductStock[] }) {
   const values = shelfValues(products);
   const caveat = unpricedNote(values.stock);
 
   return (
-    <Card className="mb-[14px]">
-      <div className="flex flex-wrap items-end justify-between gap-[18px]">
-        <div className="flex flex-wrap items-end gap-x-[42px] gap-y-[14px]">
+    <Card soft className="mb-[22px]">
+      <div className="flex flex-wrap items-start justify-between gap-[18px]">
+        <div className="flex flex-wrap items-start gap-x-[42px] gap-y-[16px]">
           <Figure label="Stock value" roll={values.stock} />
           <Figure
             label="Reserved for Sllr"
             roll={values.reserved}
-            tone="orange"
+            swatch="orange"
           />
           <Figure
             label="Requested, awaiting approval"
             roll={values.pending}
-            tone="amber"
+            swatch="amber"
           />
-          <Figure label="Free" roll={values.free} />
+          <Figure label="Free" roll={values.free} swatch="track" />
         </div>
 
         {caveat ? (
