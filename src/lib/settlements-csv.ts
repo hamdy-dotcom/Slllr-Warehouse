@@ -7,6 +7,8 @@
  * passes, which is normally yesterday.
  */
 
+import { foldArabic } from "@/lib/arabic";
+
 /** What lands in `settlements.kind`. A dispatch is a movement, not a settlement. */
 export type SettlementKind = "delivered" | "returned";
 
@@ -14,12 +16,6 @@ export type SettlementKind = "delivered" | "returned";
 export type DailyKind = "dispatched" | SettlementKind;
 
 export const DAILY_KINDS: DailyKind[] = ["dispatched", "delivered", "returned"];
-
-export const DAILY_KIND_LABELS: Record<DailyKind, string> = {
-  dispatched: "Dispatched",
-  delivered: "Delivered",
-  returned: "Returned",
-};
 
 export type SettlementCsvRow = {
   sku: string;
@@ -29,7 +25,11 @@ export type SettlementCsvRow = {
   reference?: string;
 };
 
-export type SettlementCsvProblem = { line: number; message: string };
+export type SettlementCsvProblem = {
+  line: number;
+  key: string;
+  params?: Record<string, string | number>;
+};
 
 export type SettlementCsvParse = {
   rows: SettlementCsvRow[];
@@ -73,6 +73,13 @@ const HEADERS: Record<string, keyof SettlementCsvRow> = {
   day: "occurred_on",
   reference: "reference",
   ref: "reference",
+  // Arabic headers, as the template downloads them.
+  رمز_المنتج: "sku",
+  رمز: "sku",
+  النوع: "kind",
+  الكميه: "qty",
+  التاريخ: "occurred_on",
+  المرجع: "reference",
 };
 
 const KIND_ALIASES: Record<string, DailyKind> = {
@@ -87,6 +94,13 @@ const KIND_ALIASES: Record<string, DailyKind> = {
   sold: "delivered",
   returned: "returned",
   return: "returned",
+  // Arabic, so a translated template reads back in.
+  مصروف: "dispatched",
+  صرف: "dispatched",
+  مسلم: "delivered",
+  تسليم: "delivered",
+  مرتجع: "returned",
+  ارجاع: "returned",
 };
 
 export function parseSettlementCsv(
@@ -102,7 +116,7 @@ export function parseSettlementCsv(
   const problems: SettlementCsvProblem[] = [];
   if (lines.length === 0) return { rows, problems };
 
-  const first = splitLine(lines[0]).map((cell) => cell.toLowerCase());
+  const first = splitLine(lines[0]).map(foldArabic);
   const hasHeader = first.some((cell) => cell in HEADERS);
 
   const index = hasHeader
@@ -118,7 +132,7 @@ export function parseSettlementCsv(
   if (hasHeader && (index.sku === -1 || index.qty === -1)) {
     problems.push({
       line: 1,
-      message: "The header needs a sku column and a qty column.",
+      key: "headerQty",
     });
     return { rows, problems };
   }
@@ -134,16 +148,17 @@ export function parseSettlementCsv(
 
     const sku = at(index.sku);
     if (!sku) {
-      problems.push({ line: lineNumber, message: "No SKU on this line." });
+      problems.push({ line: lineNumber, key: "noSku" });
       return;
     }
 
-    const rawKind = at(index.kind).toLowerCase();
+    const rawKind = foldArabic(at(index.kind));
     const kind = rawKind === "" ? "delivered" : KIND_ALIASES[rawKind];
     if (!kind) {
       problems.push({
         line: lineNumber,
-        message: `${sku}: "${at(index.kind)}" is not dispatched, delivered, or returned.`,
+        key: "badSettlementKind",
+        params: { sku, value: at(index.kind) },
       });
       return;
     }
@@ -154,7 +169,8 @@ export function parseSettlementCsv(
     if (seen.has(key)) {
       problems.push({
         line: lineNumber,
-        message: `${sku} appears more than once as ${kind} — combine them into one line.`,
+        key: "duplicateKind",
+        params: { sku, kind },
       });
       return;
     }
@@ -163,7 +179,8 @@ export function parseSettlementCsv(
     if (!Number.isInteger(qty) || qty < 1) {
       problems.push({
         line: lineNumber,
-        message: `${sku} needs a whole quantity of at least 1, not "${at(index.qty)}".`,
+        key: "qtyAtLeastOne",
+        params: { sku, value: at(index.qty) },
       });
       return;
     }
@@ -172,7 +189,8 @@ export function parseSettlementCsv(
     if (rawDate !== "" && !ISO_DATE.test(rawDate)) {
       problems.push({
         line: lineNumber,
-        message: `${sku}: "${rawDate}" is not a date. Use YYYY-MM-DD.`,
+        key: "badDate",
+        params: { sku, value: rawDate },
       });
       return;
     }
@@ -192,11 +210,36 @@ export function parseSettlementCsv(
   return { rows, problems };
 }
 
-export function settlementCsvTemplate(date: string): string {
+export type SettlementCsvHeaders = {
+  sku: string;
+  kind: string;
+  qty: string;
+  occurred_on: string;
+  reference: string;
+};
+
+/**
+ * The template downloads in the reader's own language, headers and kinds
+ * alike. Both spellings parse back, so a file written in one locale still
+ * uploads in the other.
+ */
+export function settlementCsvTemplate(
+  date: string,
+  headers: SettlementCsvHeaders,
+  kindWords: Record<DailyKind, string>,
+): string {
+  const header = [
+    headers.sku,
+    headers.kind,
+    headers.qty,
+    headers.occurred_on,
+    headers.reference,
+  ].join(",");
+
   return [
-    "sku,kind,qty,occurred_on,reference",
-    `SKU-1001,dispatched,40,${date},DO-5510`,
-    `SKU-1001,delivered,12,${date},INV-2201`,
-    `SKU-1002,returned,3,${date},RET-118`,
+    header,
+    `SKU-1001,${kindWords.dispatched},40,${date},DO-5510`,
+    `SKU-1001,${kindWords.delivered},12,${date},INV-2201`,
+    `SKU-1002,${kindWords.returned},3,${date},RET-118`,
   ].join("\n");
 }

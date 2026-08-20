@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
@@ -10,53 +11,56 @@ import {
   money,
   rollValue,
   unitCost,
-  unpricedNote,
+  unpricedCount,
 } from "@/lib/money";
 import { ApprovalActions } from "./approval-actions";
 
-export const metadata: Metadata = { title: "Approvals · Sllr warehouse" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return { title: `${t("approvals.title")} · ${t("app.titleSuffix")}` };
+}
 
 export default async function ApprovalsPage() {
   await requireSupplier();
 
-  const pending = await listPendingApprovals();
+  const [t, tc, locale, pending] = await Promise.all([
+    getTranslations("approvals"),
+    getTranslations("common"),
+    getLocale(),
+    listPendingApprovals(),
+  ]);
 
   const asked = rollValue(
     pending,
     (request) => request.qty_requested,
     (request) => request.unit_cost,
   );
-  const caveat = unpricedNote(asked);
+  const unpriced = unpricedCount(asked);
 
   return (
     <>
       <div className="mb-[18px]">
-        <h1 className="text-title font-medium">Approvals</h1>
-        <Muted className="mt-[6px] max-w-[460px]">
-          Approving moves units into Reserved for Sllr. A partial approve keeps
-          the original request on record.
-        </Muted>
+        <h1 className="text-title font-medium">{t("title")}</h1>
+        <Muted className="mt-[6px] max-w-[460px]">{t("lede")}</Muted>
       </div>
 
       <Card>
-        <SectionTitle>Waiting on you</SectionTitle>
+        <SectionTitle>{t("waitingOnYou")}</SectionTitle>
         <Muted className="mb-4">
-          {pending.length === 1
-            ? "1 request waiting."
-            : `${n(pending.length)} requests waiting.`}{" "}
+          {t("waitingCount", { count: pending.length })}{" "}
           {pending.length > 0 ? (
             <>
-              Worth <b className="text-amber-ink">{money(asked.total)}</b>, each
-              at the cost it was requested at.
-              {caveat ? ` ${caveat}.` : ""}
+              {t.rich("worthAt", {
+                value: money(asked.total),
+                b: (chunks) => <b className="text-amber-ink">{chunks}</b>,
+              })}
+              {unpriced ? ` ${tc("notPriced", { count: unpriced })}.` : ""}
             </>
           ) : null}
         </Muted>
 
         {pending.length === 0 ? (
-          <Empty>
-            Nothing waiting. Approved requests show up in the inventory table.
-          </Empty>
+          <Empty>{t("empty")}</Empty>
         ) : (
           <div className="flex flex-col gap-[11px]">
             {pending.map((request) => {
@@ -74,27 +78,33 @@ export default async function ApprovalsPage() {
 
                     <div className="min-w-[220px] flex-1">
                       <div className="text-product font-medium">
-                        {request.product.name} · {n(request.qty_requested)}{" "}
-                        units
+                        {t("unitsRequested", {
+                          product: request.product.name,
+                          count: n(request.qty_requested),
+                        })}
                       </div>
                       <div className="font-mono text-meta text-ink-3">
-                        {request.product.sku} · {request.product.warehouse_code}
+                        <span className="latin">
+                          {request.product.sku} ·{" "}
+                          {request.product.warehouse_code}
+                        </span>
                       </div>
                       <div className="mt-1 text-[12px] text-ink-2">
                         {request.unit_cost === null ? (
-                          <span className="text-ink-3">Not priced</span>
+                          <span className="text-ink-3">{t("notPriced")}</span>
                         ) : (
-                          <>
-                            {unitCost(request.unit_cost)} per unit · worth{" "}
-                            <b className="text-amber-ink">
-                              {money(
-                                lineValue(
-                                  request.qty_requested,
-                                  request.unit_cost,
-                                ),
-                              )}
-                            </b>
-                          </>
+                          t.rich("perUnitWorth", {
+                            cost: unitCost(request.unit_cost),
+                            value: money(
+                              lineValue(
+                                request.qty_requested,
+                                request.unit_cost,
+                              ),
+                            ),
+                            b: (chunks) => (
+                              <b className="text-amber-ink">{chunks}</b>
+                            ),
+                          })
                         )}
                       </div>
                       <div
@@ -103,14 +113,14 @@ export default async function ApprovalsPage() {
                         }`}
                       >
                         {short > 0
-                          ? `Exceeds what is left to grant by ${n(
-                              short,
-                            )} — approve ${n(Math.max(available, 0))} instead`
-                          : `Leaves ${n(
-                              available - request.qty_requested,
-                            )} to grant · hold until ${formatDate(
-                              request.hold_until,
-                            )}`}
+                          ? t("exceeds", {
+                              short: n(short),
+                              available: n(Math.max(available, 0)),
+                            })
+                          : t("leaves", {
+                              left: n(available - request.qty_requested),
+                              date: formatDate(request.hold_until, locale),
+                            })}
                       </div>
                       {request.note ? (
                         <div className="mt-1 text-[12px] text-ink-3">

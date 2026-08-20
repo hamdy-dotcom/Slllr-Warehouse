@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
@@ -10,20 +11,17 @@ import {
   movementTotals,
 } from "@/lib/data/movements";
 import { n, relativeTime } from "@/lib/format";
-import {
-  DIRECTION_LABELS,
-  KIND_LABELS,
-  isDirection,
-  isMovementKind,
-  signedQty,
-} from "@/lib/movements";
+import { isDirection, isMovementKind, signedQty } from "@/lib/movements";
 import { MovementFilters } from "./movement-filters";
 import { RecordMovementButton } from "./record-dialog";
 
-export const metadata: Metadata = { title: "Movements · Sllr warehouse" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return { title: `${t("movements.title")} · ${t("app.titleSuffix")}` };
+}
 
 const TH =
-  "px-[10px] pb-[10px] text-left text-th font-normal uppercase tracking-[0.4px] text-ink-2";
+  "px-[10px] pb-[10px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const TD = "border-t border-line px-[10px] py-[13px] align-middle";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -50,7 +48,10 @@ export default async function MovementsPage({
   const to = ISO_DATE.test(params.to ?? "") ? params.to! : "";
   const q = params.q ?? "";
 
-  const [movements, shelf, totals] = await Promise.all([
+  const [t, tc, locale, movements, shelf, totals] = await Promise.all([
+    getTranslations("movements"),
+    getTranslations("common"),
+    getLocale(),
     listMovements({ direction, kind, from, to, q }),
     listProductStock(),
     movementTotals(30),
@@ -59,11 +60,8 @@ export default async function MovementsPage({
   return (
     <>
       <div className="mb-[18px]">
-        <h1 className="text-title font-medium">Movements</h1>
-        <Muted className="mt-[6px] max-w-[520px]">
-          Everything that has come onto your shelf or left it. Outbound stock
-          can never take a product below what is reserved for Sllr.
-        </Muted>
+        <h1 className="text-title font-medium">{t("title")}</h1>
+        <Muted className="mt-[6px] max-w-[520px]">{t("lede")}</Muted>
       </div>
 
       <Card soft className="mb-[22px]">
@@ -71,40 +69,38 @@ export default async function MovementsPage({
           <div>
             <div className="flex items-center gap-[6px] text-label text-ink-2">
               <i className="inline-block h-[5px] w-[14px] shrink-0 rounded-[3px] bg-green" />
-              Inbound, last {totals.days} days
+              {t("inboundDays", { days: totals.days })}
             </div>
             <div className="mt-[2px] text-kpi font-medium tabular-nums">
               {signedQty("in", totals.inbound)}
             </div>
             <div className="mt-[2px] text-body text-ink-3">
-              {n(totals.inboundCount)}{" "}
-              {totals.inboundCount === 1 ? "movement" : "movements"}
+              {t("movementsCount", { count: totals.inboundCount })}
             </div>
           </div>
 
           <div>
             <div className="flex items-center gap-[6px] text-label text-ink-2">
               <i className="inline-block h-[5px] w-[14px] shrink-0 rounded-[3px] bg-orange" />
-              Outbound, last {totals.days} days
+              {t("outboundDays", { days: totals.days })}
             </div>
             <div className="mt-[2px] text-kpi font-medium tabular-nums">
               {signedQty("out", totals.outbound)}
             </div>
             <div className="mt-[2px] text-body text-ink-3">
-              {n(totals.outboundCount)}{" "}
-              {totals.outboundCount === 1 ? "movement" : "movements"}
+              {t("movementsCount", { count: totals.outboundCount })}
             </div>
           </div>
 
           <div>
-            <div className="text-label text-ink-2">Net</div>
+            <div className="text-label text-ink-2">{t("net")}</div>
             <div className="mt-[2px] text-kpi font-medium tabular-nums">
               {signedQty(
                 totals.inbound - totals.outbound >= 0 ? "in" : "out",
                 totals.inbound - totals.outbound,
               )}
             </div>
-            <div className="mt-[2px] text-body text-ink-3">units</div>
+            <div className="mt-[2px] text-body text-ink-3">{tc("units")}</div>
           </div>
         </div>
       </Card>
@@ -121,43 +117,40 @@ export default async function MovementsPage({
       </MovementFilters>
 
       <Card>
-        <SectionTitle>Ledger</SectionTitle>
+        <SectionTitle>{t("ledger")}</SectionTitle>
         <Muted className="mb-4">
           {movements.length === 0
-            ? "Nothing matches those filters."
-            : `${n(movements.length)} ${movements.length === 1 ? "movement" : "movements"}${
+            ? t("noMatch")
+            : `${t("movementsCount", { count: movements.length })}${
                 movements.length === LEDGER_LIMIT
-                  ? ` · showing the most recent ${n(LEDGER_LIMIT)}, narrow the dates to see further back`
+                  ? t("showingMost", { limit: n(LEDGER_LIMIT) })
                   : ""
               }`}
         </Muted>
 
         {movements.length === 0 ? (
-          <Empty>
-            No movements yet. Record what arrives and what leaves and it shows
-            up here.
-          </Empty>
+          <Empty>{t("empty")}</Empty>
         ) : (
           <div className="scroll-x">
             <table className="w-full border-collapse text-body">
               <thead>
                 <tr>
-                  <th className={TH}>When</th>
-                  <th className={TH}>Product</th>
-                  <th className={TH}>Direction</th>
-                  <th className={TH}>Kind</th>
-                  <th className={TH}>Qty</th>
-                  <th className={TH}>Resulting qty</th>
-                  <th className={TH}>Reference</th>
+                  <th className={TH}>{t("when")}</th>
+                  <th className={TH}>{tc("product")}</th>
+                  <th className={TH}>{t("direction")}</th>
+                  <th className={TH}>{tc("kind")}</th>
+                  <th className={TH}>{tc("qty")}</th>
+                  <th className={TH}>{t("resultingQty")}</th>
+                  <th className={TH}>{tc("reference")}</th>
                 </tr>
               </thead>
               <tbody>
                 {movements.map((movement) => (
                   <tr key={movement.id}>
                     <td
-                      className={`${TD} rounded-l-[14px] text-label text-ink-2`}
+                      className={`${TD} rounded-s-[14px] text-label text-ink-2`}
                     >
-                      {relativeTime(movement.created_at)}
+                      {relativeTime(movement.created_at, locale)}
                     </td>
 
                     <td className={TD}>
@@ -171,8 +164,10 @@ export default async function MovementsPage({
                             {movement.product.name}
                           </div>
                           <div className="font-mono text-meta text-ink-3">
-                            {movement.product.sku} ·{" "}
-                            {movement.product.warehouse_code}
+                            <span className="latin">
+                              {movement.product.sku} ·{" "}
+                              {movement.product.warehouse_code}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -186,12 +181,12 @@ export default async function MovementsPage({
                             : "bg-orange-soft text-orange-ink"
                         }`}
                       >
-                        {DIRECTION_LABELS[movement.direction]}
+                        {t(`direction_${movement.direction}`)}
                       </span>
                     </td>
 
                     <td className={`${TD} text-label text-ink-2`}>
-                      {KIND_LABELS[movement.kind]}
+                      {t(`kind_${movement.kind}`)}
                     </td>
 
                     <td className={TD}>
@@ -212,11 +207,11 @@ export default async function MovementsPage({
 
                     <td className={`${TD} text-label text-ink-2`}>
                       {movement.reference ? (
-                        <span className="font-mono text-meta">
+                        <span className="latin font-mono text-meta">
                           {movement.reference}
                         </span>
                       ) : (
-                        <span className="text-ink-3">—</span>
+                        <span className="text-ink-3">{tc("dash")}</span>
                       )}
                       {movement.note ? (
                         <div className="text-meta text-ink-3">

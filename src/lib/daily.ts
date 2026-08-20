@@ -22,7 +22,7 @@ export type PoolLine = {
 export type SimRow = {
   row: SettlementCsvRow;
   /** The pool this row draws from, before and after. */
-  pool: "outstanding" | "in progress";
+  pool: "outstanding" | "inProgress";
   before: number;
   after: number;
   /** In progress before and after, for every kind — a dispatch adds to it. */
@@ -30,7 +30,17 @@ export type SimRow = {
   progressAfter: number;
   /** What the row is worth at the pool's average cost, or null when unpriced. */
   value: number | null;
-  problem: string | null;
+  /**
+   * Why the row does not fit, named rather than written out. The simulation
+   * runs on the server and in the browser and has to read in either language,
+   * so the copy is resolved where it is rendered.
+   */
+  problem: SimProblem | null;
+};
+
+export type SimProblem = {
+  key: string;
+  params?: Record<string, string | number>;
 };
 
 export type Simulation = {
@@ -71,11 +81,17 @@ export function simulateDaily(
       const each = unitCostOf(before, outValue.get(row.sku) ?? 0);
       const value = each === null ? null : each * row.qty;
 
-      let problem: string | null = null;
-      if (!known.has(row.sku)) problem = "SKU not found";
-      else if (before === 0) problem = "Nothing outstanding to dispatch";
+      let problem: SimProblem | null = null;
+      if (!known.has(row.sku)) problem = { key: "skuNotFound" };
+      else if (before === 0) problem = { key: "nothingOutstanding" };
       else if (after < 0) {
-        problem = `Only ${before.toLocaleString("en-US")} outstanding, not ${row.qty.toLocaleString("en-US")}`;
+        problem = {
+          key: "onlyOutstanding",
+          params: {
+            available: before.toLocaleString("en-US"),
+            wanted: row.qty.toLocaleString("en-US"),
+          },
+        };
       }
 
       if (!problem) {
@@ -110,11 +126,17 @@ export function simulateDaily(
     const each = unitCostOf(before, progValue.get(row.sku) ?? 0);
     const value = each === null ? null : each * row.qty;
 
-    let problem: string | null = null;
-    if (!known.has(row.sku)) problem = "SKU not found";
-    else if (before === 0) problem = "Nothing in progress for this SKU";
+    let problem: SimProblem | null = null;
+    if (!known.has(row.sku)) problem = { key: "skuNotFound" };
+    else if (before === 0) problem = { key: "nothingInProgress" };
     else if (after < 0) {
-      problem = `Only ${before.toLocaleString("en-US")} in progress, not ${row.qty.toLocaleString("en-US")}`;
+      problem = {
+        key: "onlyInProgress",
+        params: {
+          available: before.toLocaleString("en-US"),
+          wanted: row.qty.toLocaleString("en-US"),
+        },
+      };
     }
 
     if (!problem) {
@@ -126,7 +148,7 @@ export function simulateDaily(
 
     return {
       row,
-      pool: "in progress",
+      pool: "inProgress",
       before,
       after,
       progressBefore,

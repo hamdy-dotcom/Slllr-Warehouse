@@ -1,3 +1,5 @@
+import { useTranslations } from "next-intl";
+
 import { cn } from "@/lib/cn";
 import type { RequestStatus } from "@/lib/types";
 
@@ -16,6 +18,8 @@ export function Tag({
   status: RequestStatus;
   className?: string;
 }) {
+  const t = useTranslations("status");
+
   return (
     <span
       className={cn(
@@ -24,7 +28,7 @@ export function Tag({
         className,
       )}
     >
-      {status}
+      {t(status)}
     </span>
   );
 }

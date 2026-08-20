@@ -1,5 +1,3 @@
-import { parseCost } from "@/lib/money";
-
 /**
  * Just enough CSV for the bulk stock update:
  * `sku,total_qty,warehouse_code,unit_cost` with the last two optional.
@@ -9,6 +7,9 @@ import { parseCost } from "@/lib/money";
  * to not priced, because an empty cell cannot mean both things.
  */
 
+import { foldArabic } from "@/lib/arabic";
+import { parseCost } from "@/lib/money";
+
 export type CsvRow = {
   sku: string;
   total_qty: number;
@@ -17,7 +18,15 @@ export type CsvRow = {
   unit_cost?: number | null;
 };
 
-export type CsvProblem = { line: number; message: string };
+/**
+ * A problem names a message rather than carrying one. The parsers are pure and
+ * shared by both locales, so the copy is resolved where it is rendered.
+ */
+export type CsvProblem = {
+  line: number;
+  key: string;
+  params?: Record<string, string | number>;
+};
 
 export type CsvParse = { rows: CsvRow[]; problems: CsvProblem[] };
 
@@ -68,6 +77,17 @@ const HEADER_ALIASES: Record<string, keyof CsvRow> = {
   "unit cost": "unit_cost",
   cost: "unit_cost",
   price: "unit_cost",
+  // Arabic headers, as the template downloads them.
+  رمز_المنتج: "sku",
+  رمز: "sku",
+  الكميه_الاجماليه: "total_qty",
+  الكميه: "total_qty",
+  الاجمالي: "total_qty",
+  موقع_المستودع: "warehouse_code",
+  الموقع: "warehouse_code",
+  تكلفه_الوحده: "unit_cost",
+  التكلفه: "unit_cost",
+  السعر: "unit_cost",
 };
 
 export function parseStockCsv(text: string): CsvParse {
@@ -82,7 +102,7 @@ export function parseStockCsv(text: string): CsvParse {
   if (lines.length === 0) return { rows, problems };
 
   // A header is optional; without one the order is sku, total_qty, code.
-  const first = splitLine(lines[0]).map((cell) => cell.toLowerCase());
+  const first = splitLine(lines[0]).map(foldArabic);
   const looksLikeHeader = first.some((cell) => cell in HEADER_ALIASES);
 
   let index: {
@@ -105,8 +125,7 @@ export function parseStockCsv(text: string): CsvParse {
     if (index.sku === -1 || index.total_qty === -1) {
       problems.push({
         line: 1,
-        message:
-          "The header needs a sku column and a total_qty column. warehouse_code and unit_cost are optional.",
+        key: "headerStock",
       });
       return { rows, problems };
     }
@@ -132,14 +151,15 @@ export function parseStockCsv(text: string): CsvParse {
       index.unit_cost === -1 ? "" : (cells[index.unit_cost] ?? "").trim();
 
     if (!sku) {
-      problems.push({ line: lineNumber, message: "No SKU on this line." });
+      problems.push({ line: lineNumber, key: "noSku" });
       return;
     }
 
     if (seen.has(sku)) {
       problems.push({
         line: lineNumber,
-        message: `${sku} appears more than once — keep one row per SKU.`,
+        key: "duplicate",
+        params: { sku },
       });
       return;
     }
@@ -148,7 +168,8 @@ export function parseStockCsv(text: string): CsvParse {
     if (rawQty === "" || !Number.isInteger(total_qty) || total_qty < 0) {
       problems.push({
         line: lineNumber,
-        message: `${sku} needs a whole number of at least 0, not "${rawQty}".`,
+        key: "qtyWhole",
+        params: { sku, value: rawQty },
       });
       return;
     }
@@ -162,7 +183,8 @@ export function parseStockCsv(text: string): CsvParse {
       if (parsed === "invalid") {
         problems.push({
           line: lineNumber,
-          message: `${sku} has a cost of "${rawCost}". Use a number of at least 0, blank to leave it, or - to clear it.`,
+          key: "costValue",
+          params: { sku, value: rawCost },
         });
         return;
       }
@@ -185,16 +207,29 @@ function cell(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }
 
+export type StockCsvHeaders = {
+  sku: string;
+  total_qty: string;
+  warehouse_code: string;
+  unit_cost: string;
+};
+
 export function toStockCsv(
+  headers: StockCsvHeaders,
   products: {
     sku: string;
     total_qty: number;
     warehouse_code: string;
-    /** Omitted until docs/cost.sql has been run. */
+    /** Omitted until the cost migration has been run. */
     unit_cost?: number | null;
   }[],
 ): string {
-  const header = "sku,total_qty,warehouse_code,unit_cost";
+  const header = [
+    headers.sku,
+    headers.total_qty,
+    headers.warehouse_code,
+    headers.unit_cost,
+  ].join(",");
   const body = products.map((product) =>
     [
       cell(product.sku),

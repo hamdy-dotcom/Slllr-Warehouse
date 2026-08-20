@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,6 @@ import { simulateDaily } from "@/lib/daily";
 import { n } from "@/lib/format";
 import { money } from "@/lib/money";
 import {
-  DAILY_KIND_LABELS,
   parseSettlementCsv,
   settlementCsvTemplate,
   type DailyKind,
@@ -26,7 +26,7 @@ import type { InProgressLine, OutstandingLine } from "@/lib/data/wallet";
 import { recordDaily, type DailyResult } from "./actions";
 
 const TH =
-  "px-[10px] pb-[8px] text-left text-th font-normal uppercase tracking-[0.4px] text-ink-2";
+  "px-[10px] pb-[8px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const TD = "border-t border-line px-[10px] py-[9px] align-middle";
 
 const KIND_STYLE: Record<DailyKind, string> = {
@@ -55,6 +55,12 @@ export function DailyForm({
   supplierId: string;
   supplierName: string;
 }) {
+  const t = useTranslations("daily");
+  const tc = useTranslations("common");
+  const tcsv = useTranslations("csv");
+  const terr = useTranslations("csvErrors");
+  const tsim = useTranslations("sim");
+  const tm = useTranslations("movements");
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +71,22 @@ export function DailyForm({
   const [pending, startTransition] = useTransition();
 
   const parsed = useMemo(() => parseSettlementCsv(csv, date), [csv, date]);
+
+  const template = settlementCsvTemplate(
+    date,
+    {
+      sku: tcsv("sku"),
+      kind: tcsv("kind"),
+      qty: tcsv("qty"),
+      occurred_on: tcsv("occurred_on"),
+      reference: tcsv("reference"),
+    },
+    {
+      dispatched: tcsv("kind_dispatched"),
+      delivered: tcsv("kind_delivered"),
+      returned: tcsv("kind_returned"),
+    },
+  );
 
   const simulation = useMemo(
     () =>
@@ -99,8 +121,8 @@ export function DailyForm({
       const failed = list.filter((row) => !row.ok).length;
       toast(
         failed === 0
-          ? `Recorded ${n(list.length)} ${list.length === 1 ? "row" : "rows"}`
-          : `${n(failed)} of ${n(list.length)} rows failed`,
+          ? t("recordedRows", { count: list.length })
+          : tm("failedToast", { failed: n(failed), total: n(list.length) }),
       );
     });
   }
@@ -119,38 +141,31 @@ export function DailyForm({
 
     return (
       <Card>
-        <SectionTitle>Result</SectionTitle>
+        <SectionTitle>{t("resultTitle")}</SectionTitle>
         <Muted className="mb-4">
-          {supplierName} · {date}
+          {supplierName} · <span className="latin">{date}</span>
         </Muted>
 
         {failed > 0 ? (
-          <Note>
-            {failed === 1
-              ? "1 row did not go through."
-              : `${n(failed)} rows did not go through.`}{" "}
-            Nothing is written unless the whole paste fits, so the rest were
-            left alone too.
-          </Note>
+          <Note>{t("resultFailed", { count: failed })}</Note>
         ) : (
-          <Note calm>
-            All {n(results.length)} {results.length === 1 ? "row" : "rows"} went
-            through.
-          </Note>
+          <Note calm>{t("resultAllOk", { count: n(results.length) })}</Note>
         )}
 
         <div className="scroll-x mb-[13px]">
           <table className="w-full border-collapse text-body">
             <thead>
               <tr>
-                <th className={TH}>SKU</th>
-                <th className={TH}>Result</th>
+                <th className={TH}>{tc("sku")}</th>
+                <th className={TH}>{tc("result")}</th>
               </tr>
             </thead>
             <tbody>
               {results.map((row, index) => (
                 <tr key={`${row.sku}-${index}`}>
-                  <td className={`${TD} font-mono text-meta`}>{row.sku}</td>
+                  <td className={`${TD} font-mono text-meta`}>
+                    <span className="latin">{row.sku}</span>
+                  </td>
                   <td className={TD}>
                     <span
                       className={cn(
@@ -176,7 +191,7 @@ export function DailyForm({
             if (failed === 0) setCsv("");
           }}
         >
-          {failed === 0 ? "Record another day" : "Back to the paste"}
+          {failed === 0 ? t("recordAnother") : t("backToPaste")}
         </Button>
       </Card>
     );
@@ -185,14 +200,10 @@ export function DailyForm({
   return (
     <div className="grid gap-[14px] xl:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="min-w-0">
-        <SectionTitle>The day&rsquo;s numbers</SectionTitle>
-        <Muted className="mb-4">
-          One line per SKU and kind: sku, kind, qty, occurred_on, reference.
-          Kind is dispatched, delivered, or returned. A blank date uses the one
-          below.
-        </Muted>
+        <SectionTitle>{t("numbers")}</SectionTitle>
+        <Muted className="mb-4">{t("numbersLede")}</Muted>
 
-        <Field label="Date these happened on" htmlFor="occurred_on">
+        <Field label={t("dateLabel")} htmlFor="occurred_on">
           <Input
             id="occurred_on"
             type="date"
@@ -203,26 +214,24 @@ export function DailyForm({
 
         <div className="mb-[13px] flex flex-wrap gap-[9px]">
           <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-            Upload CSV
+            {tc("uploadCsv")}
           </Button>
           <Button
             variant="ghost"
             onClick={() => {
               const url = URL.createObjectURL(
-                new Blob([settlementCsvTemplate(date)], {
-                  type: "text/csv;charset=utf-8",
-                }),
+                new Blob([template], { type: "text/csv;charset=utf-8" }),
               );
               const link = document.createElement("a");
               link.href = url;
-              link.download = `daily-${date}.csv`;
+              link.download = t("templateName", { date });
               document.body.append(link);
               link.click();
               link.remove();
               URL.revokeObjectURL(url);
             }}
           >
-            Download CSV template
+            {tc("downloadTemplate")}
           </Button>
           <input
             ref={fileRef}
@@ -240,22 +249,24 @@ export function DailyForm({
             setCsv(event.target.value);
             setError(null);
           }}
-          placeholder={settlementCsvTemplate(date)}
-          aria-label="Paste the day's numbers"
+          placeholder={template}
+          aria-label={t("pasteLabel")}
+          dir="ltr"
           className="mb-[13px] font-mono text-meta"
         />
 
         {parsed.problems.length > 0 ? (
           <Note>
             <div className="mb-1 font-medium">
-              {parsed.problems.length === 1
-                ? "1 line was skipped"
-                : `${n(parsed.problems.length)} lines were skipped`}
+              {tc("linesSkipped", { count: parsed.problems.length })}
             </div>
             <ul className="flex flex-col gap-[2px]">
               {parsed.problems.slice(0, 6).map((problem) => (
                 <li key={problem.line}>
-                  Line {problem.line}: {problem.message}
+                  {tc("lineNumber", {
+                    line: problem.line,
+                    message: terr(problem.key, problem.params),
+                  })}
                 </li>
               ))}
             </ul>
@@ -268,21 +279,21 @@ export function DailyForm({
               <table className="w-full border-collapse text-body">
                 <thead>
                   <tr>
-                    <th className={TH}>SKU</th>
-                    <th className={TH}>Kind</th>
-                    <th className={TH}>Qty</th>
-                    <th className={TH}>Draws from</th>
-                    <th className={TH}>In progress</th>
+                    <th className={TH}>{tc("sku")}</th>
+                    <th className={TH}>{tc("kind")}</th>
+                    <th className={TH}>{tc("qty")}</th>
+                    <th className={TH}>{t("drawsFrom")}</th>
+                    <th className={TH}>{t("inProgressCol")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {simulation.rows.map((entry, index) => (
                     <tr key={`${entry.row.sku}-${entry.row.kind}-${index}`}>
                       <td className={`${TD} font-mono text-meta`}>
-                        {entry.row.sku}
+                        <span className="latin">{entry.row.sku}</span>
                         {entry.problem ? (
                           <div className="font-sans text-meta text-orange-ink">
-                            {entry.problem}
+                            {tsim(entry.problem.key, entry.problem.params)}
                           </div>
                         ) : null}
                       </td>
@@ -294,7 +305,7 @@ export function DailyForm({
                             KIND_STYLE[entry.row.kind],
                           )}
                         >
-                          {DAILY_KIND_LABELS[entry.row.kind]}
+                          {t(`kind_${entry.row.kind}`)}
                         </span>
                       </td>
 
@@ -308,9 +319,13 @@ export function DailyForm({
                       </td>
 
                       <td className={`${TD} tabular-nums`}>
-                        <div className="text-meta text-ink-3">{entry.pool}</div>
+                        <div className="text-meta text-ink-3">
+                          {t(
+                            `pool${entry.pool === "outstanding" ? "Outstanding" : "InProgress"}`,
+                          )}
+                        </div>
                         <span className="text-ink-3">{n(entry.before)}</span>
-                        <span className="mx-1 text-ink-3">→</span>
+                        <span className="mx-1 text-ink-3">{tc("arrow")}</span>
                         <b
                           className={cn(
                             "font-medium",
@@ -331,7 +346,9 @@ export function DailyForm({
                             <span className="text-ink-3">
                               {n(entry.progressBefore)}
                             </span>
-                            <span className="mx-1 text-ink-3">→</span>
+                            <span className="mx-1 text-ink-3">
+                              {tc("arrow")}
+                            </span>
                             <b className="font-medium">
                               {n(entry.progressAfter)}
                             </b>
@@ -345,12 +362,7 @@ export function DailyForm({
             </div>
 
             {simulation.blocked > 0 ? (
-              <Note>
-                {simulation.blocked === 1
-                  ? "1 row does not fit."
-                  : `${n(simulation.blocked)} rows do not fit.`}{" "}
-                Nothing is sent until the whole paste fits.
-              </Note>
+              <Note>{t("doNotFit", { count: simulation.blocked })}</Note>
             ) : null}
           </>
         ) : null}
@@ -365,34 +377,36 @@ export function DailyForm({
           }
         >
           {pending
-            ? "Recording…"
+            ? tc("recording")
             : parsed.rows.length === 0
-              ? "Paste the day's numbers"
-              : `Record ${n(parsed.rows.length)} ${parsed.rows.length === 1 ? "row" : "rows"}`}
+              ? t("pasteEmpty")
+              : t("recordRows", { count: parsed.rows.length })}
         </Button>
       </Card>
 
       <div className="grid content-start gap-[14px]">
         <Card soft>
-          <SectionTitle>This paste</SectionTitle>
-          <Muted className="mb-3">Before anything is sent</Muted>
+          <SectionTitle>{t("thisPaste")}</SectionTitle>
+          <Muted className="mb-3">{t("beforeSent")}</Muted>
           <Line
-            label="Dispatched"
+            label={t("dispatched")}
             value={simulation.dispatchedValue}
             tone="text-orange"
           />
           <Line
-            label="Delivered"
+            label={t("delivered")}
             value={simulation.deliveredValue}
             tone="text-green"
           />
           <Line
-            label="Returned"
+            label={t("returned")}
             value={simulation.returnedValue}
             tone="text-amber-ink"
           />
           <div className="flex items-center justify-between py-[9px] text-body">
-            <span className="text-label text-ink-2">Rows that do not fit</span>
+            <span className="text-label text-ink-2">
+              {t("rowsThatDoNotFit")}
+            </span>
             <b
               className={
                 simulation.blocked > 0
@@ -406,9 +420,9 @@ export function DailyForm({
         </Card>
 
         <Pool
-          title="Outstanding now"
-          empty="Nothing approved is waiting to be dispatched."
-          unit="approved, not yet dispatched"
+          title={t("outstandingNow")}
+          empty={t("outstandingEmpty")}
+          unit={t("outstandingUnit")}
           lines={outstanding.map((line) => ({
             sku: line.sku,
             qty: line.outstanding_qty,
@@ -417,9 +431,9 @@ export function DailyForm({
         />
 
         <Pool
-          title="In progress now"
-          empty="Nothing is dispatched and waiting to be settled."
-          unit="dispatched, not yet settled"
+          title={t("inProgressNow")}
+          empty={t("inProgressEmpty")}
+          unit={t("inProgressUnit")}
           lines={inProgress.map((line) => ({
             sku: line.sku,
             qty: line.in_progress_qty,
@@ -461,13 +475,15 @@ function Pool({
   unit: string;
   lines: { sku: string; qty: number; value: number }[];
 }) {
+  const tc = useTranslations("common");
+
   return (
     <Card soft>
       <SectionTitle>{title}</SectionTitle>
       <Muted className="mb-3">
         {lines.length === 0
           ? empty
-          : `${n(lines.length)} ${lines.length === 1 ? "SKU" : "SKUs"} ${unit}`}
+          : `${tc("skusCount", { count: lines.length })} ${unit}`}
       </Muted>
       <div className="flex max-h-[220px] flex-col gap-[2px] overflow-y-auto">
         {lines.map((line) => (
@@ -475,7 +491,9 @@ function Pool({
             key={line.sku}
             className="flex items-center justify-between border-b border-line py-[7px] text-body last:border-b-0"
           >
-            <span className="font-mono text-meta text-ink-3">{line.sku}</span>
+            <span className="latin font-mono text-meta text-ink-3">
+              {line.sku}
+            </span>
             <span className="tabular-nums">
               {n(line.qty)}{" "}
               <span className="text-ink-3">· {money(line.value)}</span>

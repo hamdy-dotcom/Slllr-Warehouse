@@ -286,6 +286,28 @@ choice is stored per route in a `sllr-view-*` cookie written by a server action,
 so the server renders the right view on the first paint. The catalog opens as a
 grid, the inventory as rows.
 
+### Language and direction
+
+English and Arabic, from one set of screens. The locale lives in a
+`sllr-locale` cookie rather than a URL prefix: the shelf is one warehouse, and
+a supplier and a Sllr buyer share links to the same rows whatever language
+each of them reads. The switcher sits beside the sign-out control, writes the
+cookie through a server action, then refreshes the router so the next render —
+including `dir` and `lang` on `<html>` — already speaks it.
+
+Arabic is right to left throughout, not just translated. Everything that has a
+side uses a logical property, directional glyphs come from the catalogue so
+they mirror with the text, and Latin identifiers — a SKU, `L03-R02-B07`, a
+reference — carry a `latin` span that isolates them from the bidi algorithm.
+Numbers, currency, and dates stay in Latin digits in both languages; only the
+month name changes. `docs/DESIGN.md` has the type stack and the full rules.
+
+Product names, SKUs, supplier names, and references are data and are never
+translated. CSV templates download with headers in the reader's language, and
+the parsers accept both spellings, so a file written in one locale still
+uploads in the other. The values inside a CSV stay Latin: an Arabic word in a
+comma-separated line reorders under bidi and comes back unreadable.
+
 ### Shape of the code
 
 ```
@@ -299,7 +321,8 @@ src/
     actions/          server actions that write through the RPCs
     supabase/         browser, server, and service-role clients
     shelf.ts          pure search, filter, and roll-up — safe on the client
-    warehouse.ts      the 8 × 14 grid, derived from warehouse codes
+    i18n/             locale cookie, request config, and the switcher action
+  ../messages/        en.json and ar.json, one key per string
 ```
 
 Reads are server components, writes are server actions. Search and filter live

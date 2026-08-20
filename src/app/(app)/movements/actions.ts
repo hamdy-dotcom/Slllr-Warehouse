@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 
 import { requireSupplier } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { rpcTranslator } from "@/lib/rpc-message";
 import {
   isDirection,
   isMovementKind,
@@ -47,16 +49,23 @@ function revalidateAll() {
  * `kindFits` also keeps a dispatch out: it is allocated against approved
  * requests on the daily screen, never recorded loose from here.
  */
-function validate(row: MovementRow): string | null {
-  if (!row.sku) return "Every row needs a SKU.";
+function validate(
+  row: MovementRow,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+  direction: (value: Direction) => string,
+): string | null {
+  if (!row.sku) return t("everyRowNeedsSku");
   if (!Number.isInteger(row.qty) || row.qty < 1) {
-    return `${row.sku}: enter a quantity of at least 1.`;
+    return t("rowQty", { sku: row.sku });
   }
   if (!isDirection(row.direction)) {
-    return `${row.sku}: pick inbound or outbound.`;
+    return t("rowDirection", { sku: row.sku });
   }
   if (!isMovementKind(row.kind) || !kindFits(row.direction, row.kind)) {
-    return `${row.sku}: that kind does not belong to an ${row.direction === "in" ? "inbound" : "outbound"} movement.`;
+    return t("rowKindDirection", {
+      sku: row.sku,
+      direction: direction(row.direction),
+    });
   }
   return null;
 }
@@ -71,20 +80,26 @@ export async function recordMovements(
   formData: FormData,
 ): Promise<MovementState> {
   const raw = String(formData.get("rows") ?? "");
+  const [t, tm, say] = await Promise.all([
+    getTranslations("errors"),
+    getTranslations("movements"),
+    rpcTranslator(),
+  ]);
+  const directionWord = (value: Direction) => tm(`direction_${value}`);
 
   let rows: MovementRow[];
   try {
     rows = JSON.parse(raw);
   } catch {
-    return { error: "Could not read those rows. Try again." };
+    return { error: t("cannotRead") };
   }
 
   if (!Array.isArray(rows) || rows.length === 0) {
-    return { error: "There is nothing to record yet." };
+    return { error: t("nothingToRecord") };
   }
 
   for (const row of rows) {
-    const problem = validate(row);
+    const problem = validate(row, t, directionWord);
     if (problem) return { error: problem };
   }
 
@@ -98,5 +113,8 @@ export async function recordMovements(
   if (error) return { error: error.message };
 
   revalidateAll();
-  return { savedAt: Date.now(), results: data ?? [] };
+  return {
+    savedAt: Date.now(),
+    results: (data ?? []).map((row) => ({ ...row, message: say(row.message) })),
+  };
 }

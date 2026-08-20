@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -8,6 +9,7 @@ import { allocateDispatch, simulateDaily } from "@/lib/daily";
 import { DISPATCH_KIND } from "@/lib/movements";
 import type { SettlementCsvRow } from "@/lib/settlements-csv";
 import { inProgressBySupplier, outstandingBySupplier } from "@/lib/data/wallet";
+import { rpcTranslator } from "@/lib/rpc-message";
 
 export type DailyResult = { sku: string; ok: boolean; message: string };
 
@@ -49,33 +51,39 @@ export async function recordDaily(
 ): Promise<DailyState> {
   const supplierId = String(formData.get("supplier_id") ?? "");
   const raw = String(formData.get("rows") ?? "");
+  const [t, tsim, tr, say] = await Promise.all([
+    getTranslations("errors"),
+    getTranslations("sim"),
+    getTranslations("rpc"),
+    rpcTranslator(),
+  ]);
 
-  if (!supplierId) return { error: "Pick a supplier first." };
+  if (!supplierId) return { error: t("pickSupplier") };
 
   let rows: SettlementCsvRow[];
   try {
     rows = JSON.parse(raw);
   } catch {
-    return { error: "Could not read those rows. Try again." };
+    return { error: t("cannotRead") };
   }
 
   if (!Array.isArray(rows) || rows.length === 0) {
-    return { error: "There is nothing to record yet." };
+    return { error: t("nothingToRecord") };
   }
 
   for (const row of rows) {
-    if (!row.sku) return { error: "Every row needs a SKU." };
+    if (!row.sku) return { error: t("everyRowNeedsSku") };
     if (!Number.isInteger(row.qty) || row.qty < 1) {
-      return { error: `${row.sku}: enter a quantity of at least 1.` };
+      return { error: t("rowQty", { sku: row.sku }) };
     }
     if (!ISO_DATE.test(row.occurred_on)) {
-      return { error: `${row.sku}: give the date as YYYY-MM-DD.` };
+      return { error: t("rowDate", { sku: row.sku }) };
     }
   }
 
   const profile = await requireProfile();
   if (profile.role === "supplier") {
-    return { error: "Only a Sllr account can record the daily update." };
+    return { error: t("onlySllrDaily") };
   }
 
   const [outstanding, inProgress] = await Promise.all([
@@ -103,9 +111,9 @@ export async function recordDaily(
       results: simulation.rows.map((entry) => ({
         sku: entry.row.sku,
         ok: false,
-        message:
-          entry.problem ??
-          "Not recorded — fix the rows that do not fit and send again",
+        message: entry.problem
+          ? tsim(entry.problem.key, entry.problem.params)
+          : t("notRecordedFix"),
       })),
     };
   }
@@ -133,7 +141,7 @@ export async function recordDaily(
         results.push({
           sku: row.sku,
           ok: false,
-          message: "No approved request left to dispatch against",
+          message: t("noApprovedLeft"),
         });
         continue;
       }
@@ -161,7 +169,7 @@ export async function recordDaily(
         results.push({
           sku: row.sku,
           ok: false,
-          message: failed[0].message,
+          message: say(failed[0].message),
         });
         continue;
       }
@@ -175,9 +183,15 @@ export async function recordDaily(
       results.push({
         sku: row.sku,
         ok: true,
-        message: `dispatched ${row.qty.toLocaleString("en-US")} units${
-          slices.length > 1 ? ` across ${slices.length} requests` : ""
-        }`,
+        message:
+          slices.length > 1
+            ? tr("dispatchedAcross", {
+                count: row.qty.toLocaleString("en-US"),
+                requests: slices.length,
+              })
+            : tr("dispatchedUnits", {
+                count: row.qty.toLocaleString("en-US"),
+              }),
       });
       continue;
     }
@@ -194,8 +208,8 @@ export async function recordDaily(
     const answer = data?.[0];
     results.push(
       answer
-        ? { sku: row.sku, ok: answer.ok, message: answer.message }
-        : { sku: row.sku, ok: false, message: "No answer from the shelf" },
+        ? { sku: row.sku, ok: answer.ok, message: say(answer.message) }
+        : { sku: row.sku, ok: false, message: t("noAnswer") },
     );
   }
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/cn";
 
@@ -58,11 +59,17 @@ export function ButtonLink({
   return <Link className={buttonClass(variant, className)} {...props} />;
 }
 
-/** The small round `↗` affordance in the top-right of a KPI card. */
+/**
+ * The small round arrow affordance in the top corner of a KPI card. The
+ * glyph itself comes from the messages so it points outward in both
+ * directions — `↗` reading left to right, `↖` reading right to left.
+ */
 export function ArrowButton({
   className,
   ...props
 }: React.ComponentProps<"button">) {
+  const t = useTranslations("common");
+
   return (
     <button
       type="button"
@@ -72,7 +79,7 @@ export function ArrowButton({
       )}
       {...props}
     >
-      ↗
+      {t("arrowUp")}
     </button>
   );
 }

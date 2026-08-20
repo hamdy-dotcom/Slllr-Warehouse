@@ -7,10 +7,11 @@ import type { ProductStock } from "@/lib/types";
 
 export type ShelfFilter = "all" | "low" | "reserved";
 
-export const FILTER_LABELS: Record<ShelfFilter, string> = {
-  all: "All",
-  low: "Low free stock",
-  reserved: "Has reservation",
+/** Message keys under `shelf`, so the toolbar reads in either language. */
+export const FILTER_KEYS: Record<ShelfFilter, string> = {
+  all: "filterAll",
+  low: "filterLow",
+  reserved: "filterReserved",
 };
 
 export function isShelfFilter(value: string | undefined): value is ShelfFilter {

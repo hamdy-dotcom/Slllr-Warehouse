@@ -1,31 +1,32 @@
 import type { AppRole } from "@/lib/types";
 
-export type NavItem = { href: string; label: string };
+/** `key` names an entry in the `nav` messages, never the copy itself. */
+export type NavItem = { href: string; key: string };
 
 /** One codebase, two experiences. Admin borrows the supplier nav plus catalog. */
 export const NAV: Record<AppRole, NavItem[]> = {
   sllr: [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/catalog", label: "Catalog" },
-    { href: "/requests", label: "My requests" },
-    { href: "/wallet", label: "Wallet" },
-    { href: "/daily", label: "Daily update" },
+    { href: "/dashboard", key: "dashboard" },
+    { href: "/catalog", key: "catalog" },
+    { href: "/requests", key: "requests" },
+    { href: "/wallet", key: "wallet" },
+    { href: "/daily", key: "daily" },
   ],
   supplier: [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/inventory", label: "Inventory" },
-    { href: "/movements", label: "Movements" },
-    { href: "/wallet", label: "Wallet" },
-    { href: "/approvals", label: "Approvals" },
+    { href: "/dashboard", key: "dashboard" },
+    { href: "/inventory", key: "inventory" },
+    { href: "/movements", key: "movements" },
+    { href: "/wallet", key: "wallet" },
+    { href: "/approvals", key: "approvals" },
   ],
   admin: [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/catalog", label: "Catalog" },
-    { href: "/daily", label: "Daily update" },
-    { href: "/inventory", label: "Inventory" },
-    { href: "/movements", label: "Movements" },
-    { href: "/wallet", label: "Wallet" },
-    { href: "/approvals", label: "Approvals" },
+    { href: "/dashboard", key: "dashboard" },
+    { href: "/catalog", key: "catalog" },
+    { href: "/daily", key: "daily" },
+    { href: "/inventory", key: "inventory" },
+    { href: "/movements", key: "movements" },
+    { href: "/wallet", key: "wallet" },
+    { href: "/approvals", key: "approvals" },
   ],
 };
 

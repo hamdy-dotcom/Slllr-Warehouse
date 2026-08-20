@@ -29,6 +29,16 @@ Orange hover: `#DD5730`. Text on orange-soft: `#B8431E`. Text on amber-soft: `#9
 
 Poppins via `next/font/google`, weights 300 / 400 / 500 / 600 only. Never 700.
 
+Arabic has no Poppins coverage, so it gets **IBM Plex Sans Arabic** via
+`next/font/google` at the same four weights. Both faces are declared on
+`<html>` as CSS variables; `globals.css` swaps `--font-sans` on
+`html[lang="ar"]` so the whole scale below applies unchanged in either
+language. Poppins stays second in the Arabic stack on purpose: a SKU or a
+warehouse code sitting inside Arabic text keeps the shape it has in English.
+
+The Arabic face is loaded with `preload: false` — an English page never
+renders a glyph from it.
+
 | Role | Size | Weight |
 |---|---|---|
 | Page title | 29px | 500, letter-spacing -0.4px |
@@ -40,7 +50,9 @@ Poppins via `next/font/google`, weights 300 / 400 / 500 / 600 only. Never 700.
 | Meta (SKU, warehouse code) | 11px | 400, monospace |
 | Table header | 11.5px | 400, uppercase, letter-spacing 0.4px |
 
-Sentence case everywhere. No ALL CAPS except table headers.
+Sentence case everywhere. No ALL CAPS except table headers. Arabic has no
+case, so the equivalent is plain declarative phrasing — no shouting, no
+decorative punctuation.
 
 ## Shape and spacing
 
@@ -78,3 +90,31 @@ A stocked bin has to be legible against an empty one, so the two neutrals are ke
 ## Copy rules
 
 Sentence case, active voice, no exclamation marks. Buttons name the action: "Reserve stock", "Send request", "Approve 340". Errors say what to do: "Enter a number of at least 450." Empty states invite: "Nothing waiting. Approved requests show up in the inventory table."
+
+The same rules hold in Arabic: buttons name the action ("إرسال الطلب",
+"اعتماد 340"), errors say what to do ("أدخل رقمًا لا يقل عن 450."), and no
+message ends in an exclamation mark.
+
+## Direction
+
+Arabic renders right to left: `<html dir="rtl" lang="ar">`, set from the
+locale cookie. Everything that has a side uses a logical property — `ms-`,
+`me-`, `ps-`, `pe-`, `text-start`, `text-end`, `rounded-s-`, `rounded-e-`,
+`start-`, `end-` — never `left` or `right`. Two exceptions are deliberate:
+the toast is centred with `left-1/2 -translate-x-1/2`, which is symmetric,
+and `-translate-x-` is a physical transform that must stay paired with it.
+
+Icons and glyphs that point somewhere mirror with the text. The KPI arrow is
+`↗` reading left to right and `↖` reading right to left, and the before/after
+arrow in every preview table is `→` or `←`; both come from the message
+catalogue rather than being hard-coded, so they turn with the language.
+
+Latin identifiers inside Arabic text — a SKU, `L03-R02-B07`, a reference, a
+date in a CSV — carry the `latin` utility (`direction: ltr;
+unicode-bidi: isolate`). Without the isolate the bidi algorithm reorders the
+run against its neighbours and `L03-R02-B07` comes out backwards.
+
+Numbers, currency, and dates stay in Latin digits in both languages. `n()`
+and `money()` format against `en-US` regardless of locale, and dates use the
+bare `ar` locale, which gives Arabic month names over Latin numerals —
+`ar-SA` would switch to Arabic-Indic digits and is deliberately not used.

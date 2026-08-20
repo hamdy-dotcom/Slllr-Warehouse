@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -28,11 +29,12 @@ export function RecordPaymentButton({
   balance: number;
   today: string;
 }) {
+  const t = useTranslations("wallet");
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Record payment</Button>
+      <Button onClick={() => setOpen(true)}>{t("recordPayment")}</Button>
       {open ? (
         <PaymentDialog
           supplierId={supplierId}
@@ -59,6 +61,8 @@ function PaymentDialog({
   today: string;
   onClose: () => void;
 }) {
+  const t = useTranslations("wallet");
+  const tc = useTranslations("common");
   const toast = useToast();
   const titleId = useId();
   const [amount, setAmount] = useState("");
@@ -69,7 +73,7 @@ function PaymentDialog({
 
   useEffect(() => {
     if (!state.savedAt) return;
-    toast("Payment recorded");
+    toast(t("paymentRecorded"));
     onClose();
     // Only react to a fresh save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,16 +85,19 @@ function PaymentDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        Record payment
+        {t("recordPayment")}
       </div>
       <Muted className="mb-4">
-        To {supplierName}. Balance owed is {money(balance)}.
+        {t("paymentTo", { supplier: supplierName, balance: money(balance) })}
       </Muted>
 
       <form action={formAction}>
         <input type="hidden" name="supplier_id" value={supplierId} />
 
-        <Field label={`Amount (${CURRENCY})`} htmlFor="amount">
+        <Field
+          label={t("amountLabel", { currency: CURRENCY })}
+          htmlFor="amount"
+        >
           <Input
             id="amount"
             name="amount"
@@ -104,7 +111,7 @@ function PaymentDialog({
           />
         </Field>
 
-        <Field label="Paid on" htmlFor="paid_on">
+        <Field label={t("paidOn")} htmlFor="paid_on">
           <Input
             id="paid_on"
             name="paid_on"
@@ -114,33 +121,41 @@ function PaymentDialog({
           />
         </Field>
 
-        <Field label="Method" htmlFor="method" hint="Optional.">
+        <Field label={t("method")} htmlFor="method" hint={tc("optional")}>
           <Input
             id="method"
             name="method"
-            placeholder="Bank transfer"
+            placeholder={t("methodPlaceholder")}
             list="payment-methods"
           />
         </Field>
         <datalist id="payment-methods">
-          <option value="Bank transfer" />
-          <option value="Cheque" />
-          <option value="Cash" />
-          <option value="Card" />
+          <option value={t("methodBank")} />
+          <option value={t("methodCheque")} />
+          <option value={t("methodCash")} />
+          <option value={t("methodCard")} />
         </datalist>
 
-        <Field label="Reference" htmlFor="reference" hint="Optional.">
+        <Field
+          label={tc("reference")}
+          htmlFor="reference"
+          hint={tc("optional")}
+        >
           <Input id="reference" name="reference" placeholder="PAY-9001" />
         </Field>
 
-        <Field label="Note" htmlFor="note" hint="Optional.">
+        <Field label={tc("note")} htmlFor="note" hint={tc("optional")}>
           <Textarea id="note" name="note" rows={2} />
         </Field>
 
         {after !== null ? (
           <Note calm={after >= 0}>
-            Balance owed {money(balance)} → <b>{money(after)}</b>
-            {after < 0 ? " — that pays more than is owed." : ""}
+            {t.rich("balanceAfter", {
+              before: money(balance),
+              after: money(after),
+              b: (chunks) => <b>{chunks}</b>,
+            })}
+            {after < 0 ? t("overpays") : ""}
           </Note>
         ) : null}
 
@@ -148,7 +163,7 @@ function PaymentDialog({
 
         <div className="flex gap-[9px]">
           <Button variant="ghost" className="flex-1" onClick={onClose}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Submit />
         </div>
@@ -158,11 +173,13 @@ function PaymentDialog({
 }
 
 function Submit() {
+  const t = useTranslations("wallet");
+  const tc = useTranslations("common");
   const { pending } = useFormStatus();
 
   return (
     <Button type="submit" className="flex-1" disabled={pending}>
-      {pending ? "Recording…" : "Record payment"}
+      {pending ? tc("recording") : t("recordPayment")}
     </Button>
   );
 }

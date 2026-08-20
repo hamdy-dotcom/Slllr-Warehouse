@@ -1,20 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 
 import { requireSupplier } from "@/lib/auth";
 import { parseCost } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { rpcTranslator } from "@/lib/rpc-message";
 
-/**
- * `L03-R02-B07` — line, rack, bin. Any two-digit line or bin is accepted; the
- * warehouse page lists anything outside the 8 x 14 grid under "Off the grid"
- * rather than dropping it.
- */
+/** `L03-R02-B07` — line, rack, bin. Any two-digit line or bin is accepted. */
 const WAREHOUSE_CODE = /^L\d{2}-R\d{2}-B\d{2}$/;
 
-const CODE_HELP = "Use the line-rack-bin format, for example L03-R02-B07.";
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
 export type ProductFormState = {
   error?: string;
@@ -58,7 +56,7 @@ type Parsed = {
   is_active: boolean;
 };
 
-function parse(formData: FormData): Parsed | string {
+function parse(formData: FormData, t: Translator): Parsed | string {
   const name = String(formData.get("name") ?? "").trim();
   const sku = String(formData.get("sku") ?? "").trim();
   const warehouse_code = String(formData.get("warehouse_code") ?? "")
@@ -67,19 +65,19 @@ function parse(formData: FormData): Parsed | string {
   const rawQty = String(formData.get("total_qty") ?? "").trim();
 
   if (!name || !sku || !warehouse_code || !rawQty) {
-    return "Name, SKU, warehouse code, and total units are all required.";
+    return t("requiredFields");
   }
 
-  if (!WAREHOUSE_CODE.test(warehouse_code)) return CODE_HELP;
+  if (!WAREHOUSE_CODE.test(warehouse_code)) return t("codeFormat");
 
   const total_qty = Number(rawQty);
   if (!Number.isInteger(total_qty) || total_qty < 0) {
-    return "Enter the total units as a whole number of at least 0.";
+    return t("wholeNumber");
   }
 
   const unit_cost = parseCost(String(formData.get("unit_cost") ?? ""));
   if (unit_cost === "invalid") {
-    return "Enter the unit cost as an amount of at least 0, or leave it blank.";
+    return t("costFormat");
   }
 
   return {
@@ -93,21 +91,21 @@ function parse(formData: FormData): Parsed | string {
 }
 
 /** Turns a Postgres error into something that says what to do next. */
-function explain(message: string): string {
+function explain(message: string, t: Translator): string {
   const belowReserved = message.match(/below the (\d+) units already reserved/);
   if (belowReserved) {
-    return `Enter a number of at least ${belowReserved[1]} — that much is already reserved.`;
+    return t("belowReserved", { count: belowReserved[1] });
   }
 
   if (message.includes('policy for table "stock_movements"')) {
-    return "Stock changes are not being recorded. stock_movements has row level security on with no insert policy, and guard_total_qty is not security definer.";
+    return t("stockMovementsPolicy");
   }
 
   if (
     message.includes("products_supplier_id_sku_key") ||
     (message.includes("duplicate key") && message.includes("sku"))
   ) {
-    return "That SKU is already on your shelf. Use a different one.";
+    return t("duplicateSku");
   }
 
   return message;
@@ -117,7 +115,8 @@ export async function addProduct(
   _previous: ProductFormState,
   formData: FormData,
 ): Promise<ProductFormState> {
-  const parsed = parse(formData);
+  const t = await getTranslations("errors");
+  const parsed = parse(formData, t);
   if (typeof parsed === "string") {
     return { error: parsed, values: submitted(formData) };
   }
@@ -132,7 +131,7 @@ export async function addProduct(
     .single();
 
   if (error) {
-    return { error: explain(error.message), values: submitted(formData) };
+    return { error: explain(error.message, t), values: submitted(formData) };
   }
 
   revalidatePath("/inventory");
@@ -147,9 +146,10 @@ export async function updateProduct(
   formData: FormData,
 ): Promise<ProductFormState> {
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "That product is no longer on the shelf." };
+  const t = await getTranslations("errors");
+  if (!id) return { error: t("productGone") };
 
-  const parsed = parse(formData);
+  const parsed = parse(formData, t);
   if (typeof parsed === "string") {
     return { error: parsed, values: submitted(formData) };
   }
@@ -165,7 +165,7 @@ export async function updateProduct(
     .eq("id", id)
     .maybeSingle();
 
-  if (!before) return { error: "That product is no longer on the shelf." };
+  if (!before) return { error: t("productGone") };
 
   const { total_qty, ...columns } = parsed;
 
@@ -178,11 +178,11 @@ export async function updateProduct(
     .eq("id", id);
 
   if (error) {
-    return { error: explain(error.message), values: submitted(formData) };
+    return { error: explain(error.message, t), values: submitted(formData) };
   }
 
   if (total_qty !== before.total_qty) {
-    const failure = await setTotalQty(columns.sku, total_qty);
+    const failure = await setTotalQty(columns.sku, total_qty, t);
     if (failure) return { error: failure, values: submitted(formData) };
   }
 
@@ -214,12 +214,15 @@ export async function uploadProductImage(
   const productId = String(formData.get("product_id") ?? "");
   const file = formData.get("image");
 
-  if (!productId) return { error: "That product is no longer on the shelf." };
+  const t = await getTranslations("errors");
+  const ti = await getTranslations("inventory");
+
+  if (!productId) return { error: t("productGone") };
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose an image file to upload." };
+    return { error: t("chooseImage") };
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    return { error: "That image is too large. Choose one under 4 MB." };
+    return { error: ti("imageTooLarge") };
   }
 
   const profile = await requireSupplier();
@@ -233,7 +236,7 @@ export async function uploadProductImage(
     .eq("supplier_id", profile.supplier_id)
     .maybeSingle();
 
-  if (!owned) return { error: "That product is not on your shelf." };
+  if (!owned) return { error: t("notYourShelf") };
 
   const admin = createAdminClient();
   const path = `${profile.supplier_id}/${productId}.jpg`;
@@ -247,7 +250,7 @@ export async function uploadProductImage(
     });
 
   if (uploadError) {
-    return { error: `Could not upload that image: ${uploadError.message}` };
+    return { error: t("uploadFailed", { message: uploadError.message }) };
   }
 
   const {
@@ -262,7 +265,7 @@ export async function uploadProductImage(
     .update({ image_url: versioned })
     .eq("id", productId);
 
-  if (error) return { error: explain(error.message) };
+  if (error) return { error: explain(error.message, t) };
 
   revalidatePath("/inventory");
   revalidatePath("/catalog");
@@ -285,9 +288,11 @@ export async function uploadProductImage(
 async function setTotalQty(
   sku: string,
   total_qty: number,
+  t: Translator,
   warehouse_code?: string,
 ): Promise<string | null> {
   const supabase = await createClient();
+  const say = await rpcTranslator();
 
   const { data, error } = await supabase.rpc("bulk_update_stock", {
     p_rows: [
@@ -295,11 +300,11 @@ async function setTotalQty(
     ],
   });
 
-  if (error) return explain(error.message);
+  if (error) return explain(error.message, t);
 
   const row = data?.[0];
-  if (!row) return "The shelf did not answer. Try again.";
-  if (!row.ok) return row.message;
+  if (!row) return (await getTranslations("rpc"))("noAnswer");
+  if (!row.ok) return say(row.message);
 
   return null;
 }
@@ -312,16 +317,17 @@ export async function updateStockQty(
   const sku = String(formData.get("sku") ?? "");
   const raw = String(formData.get("total_qty") ?? "").trim();
 
-  if (!sku) return { error: "That product is no longer on the shelf." };
+  const t = await getTranslations("errors");
+  if (!sku) return { error: t("productGone") };
 
   const total_qty = Number(raw);
   if (raw === "" || !Number.isInteger(total_qty) || total_qty < 0) {
-    return { error: "Enter the total units as a whole number of at least 0." };
+    return { error: t("wholeNumber") };
   }
 
   await requireSupplier();
 
-  const failure = await setTotalQty(sku, total_qty);
+  const failure = await setTotalQty(sku, total_qty, t);
   if (failure) return { error: failure };
 
   revalidatePath("/inventory");
@@ -363,18 +369,19 @@ export async function bulkUpdateStock(
   formData: FormData,
 ): Promise<BulkState> {
   const raw = String(formData.get("rows") ?? "");
+  const t = await getTranslations("errors");
+  const tr = await getTranslations("rpc");
+  const say = await rpcTranslator();
 
   let rows: BulkRow[];
   try {
     rows = JSON.parse(raw);
   } catch {
-    return { error: "Could not read those rows. Paste the CSV again." };
+    return { error: t("cannotRead") };
   }
 
   if (!Array.isArray(rows) || rows.length === 0) {
-    return {
-      error: "There is nothing to update. Paste or upload a CSV first.",
-    };
+    return { error: t("nothingToUpdate") };
   }
 
   await requireSupplier();
@@ -389,10 +396,13 @@ export async function bulkUpdateStock(
     ),
   });
 
-  if (error) return { error: explain(error.message) };
+  if (error) return { error: explain(error.message, t) };
 
-  const results = [...(data ?? [])];
-  const costs = await applyCosts(rows);
+  const results = (data ?? []).map((row) => ({
+    ...row,
+    message: say(row.message),
+  }));
+  const costs = await applyCosts(rows, t, tr);
 
   // Quantity and cost are independent facts on a row, so one can land while
   // the other is refused. Say so rather than reporting only half of it.
@@ -407,7 +417,7 @@ export async function bulkUpdateStock(
     if (!outcome.ok) {
       row.message = row.ok
         ? outcome.message
-        : `${row.message} · cost not changed`;
+        : `${row.message} · ${tr("costNotChanged")}`;
       row.ok = false;
     } else {
       row.message = `${row.message} · ${outcome.message}`;
@@ -430,7 +440,11 @@ type CostOutcome = { ok: boolean; message: string };
  * already matches. Only rows that actually moved come back, so an unchanged
  * price adds no noise to the result table.
  */
-async function applyCosts(rows: BulkRow[]): Promise<Map<string, CostOutcome>> {
+async function applyCosts(
+  rows: BulkRow[],
+  t: Translator,
+  tr: Translator,
+): Promise<Map<string, CostOutcome>> {
   const outcomes = new Map<string, CostOutcome>();
   const wanted = rows.filter((row) => row.unit_cost !== undefined);
   if (wanted.length === 0) return outcomes;
@@ -449,7 +463,7 @@ async function applyCosts(rows: BulkRow[]): Promise<Map<string, CostOutcome>> {
 
   if (error) {
     for (const row of wanted) {
-      outcomes.set(row.sku, { ok: false, message: explain(error.message) });
+      outcomes.set(row.sku, { ok: false, message: explain(error.message, t) });
     }
     return outcomes;
   }
@@ -469,10 +483,11 @@ async function applyCosts(rows: BulkRow[]): Promise<Map<string, CostOutcome>> {
     outcomes.set(
       row.sku,
       updateError
-        ? { ok: false, message: explain(updateError.message) }
+        ? { ok: false, message: explain(updateError.message, t) }
         : {
             ok: true,
-            message: row.unit_cost === null ? "cost cleared" : "cost updated",
+            message:
+              row.unit_cost === null ? tr("costCleared") : tr("costUpdated"),
           },
     );
   }

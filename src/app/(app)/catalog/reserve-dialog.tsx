@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -27,6 +28,7 @@ export function ReserveButton({
   /** Row view wants a button that sits in a cell, not a full-width one. */
   compact?: boolean;
 }) {
+  const t = useTranslations("catalog");
   const [open, setOpen] = useState(false);
 
   return (
@@ -35,7 +37,7 @@ export function ReserveButton({
         className={compact ? undefined : "w-full"}
         onClick={() => setOpen(true)}
       >
-        {compact ? "Reserve" : "Reserve stock"}
+        {compact ? t("reserve") : t("reserveStock")}
       </Button>
       {open ? (
         <ReserveDialog product={product} onClose={() => setOpen(false)} />
@@ -51,6 +53,8 @@ function ReserveDialog({
   product: ProductStock;
   onClose: () => void;
 }) {
+  const t = useTranslations("reserve");
+  const tc = useTranslations("common");
   const toast = useToast();
   const titleId = useId();
   const [state, formAction] = useActionState<ReserveState, FormData>(
@@ -64,7 +68,7 @@ function ReserveDialog({
 
   useEffect(() => {
     if (!state.savedAt) return;
-    toast("Request sent — waiting on supplier approval");
+    toast(t("sent"));
     onClose();
     // Only react to a fresh save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,10 +89,12 @@ function ReserveDialog({
         />
         <div>
           <div id={titleId} className="text-product font-medium">
-            Reserve {product.name}
+            {t("title", { product: product.name })}
           </div>
           <div className="font-mono text-meta text-ink-3">
-            {product.sku} · {product.warehouse_code}
+            <span className="latin">
+              {product.sku} · {product.warehouse_code}
+            </span>
           </div>
         </div>
       </div>
@@ -96,7 +102,7 @@ function ReserveDialog({
       <form action={formAction}>
         <input type="hidden" name="product_id" value={product.id} />
 
-        <Field label="Quantity" htmlFor="qty">
+        <Field label={t("quantity")} htmlFor="qty">
           <Input
             id="qty"
             name="qty"
@@ -108,7 +114,7 @@ function ReserveDialog({
           />
         </Field>
 
-        <Field label="Hold until" htmlFor="hold_until">
+        <Field label={t("holdUntil")} htmlFor="hold_until">
           <Input
             id="hold_until"
             name="hold_until"
@@ -117,46 +123,44 @@ function ReserveDialog({
           />
         </Field>
 
-        <Field label="Note to supplier" htmlFor="note">
+        <Field label={t("noteToSupplier")} htmlFor="note">
           <Textarea
             id="note"
             name="note"
             rows={2}
             defaultValue={state.values?.note ?? ""}
-            placeholder="What is this batch for?"
+            placeholder={t("notePlaceholder")}
           />
         </Field>
 
         <Note calm={after >= 0}>
-          Free now <b>{n(product.free_qty)}</b> → free after approval{" "}
-          <b>{n(after)}</b>
+          {t.rich("freeNow", {
+            before: n(product.free_qty),
+            after: n(after),
+            b: (chunks) => <b>{chunks}</b>,
+          })}
         </Note>
 
         <Note calm>
-          {product.unit_cost === null ? (
-            <>
-              This product is not priced yet, so this request carries no value.
-            </>
-          ) : (
-            <>
-              {unitCost(product.unit_cost)} per unit → this request is worth{" "}
-              <b>
-                {money(
+          {product.unit_cost === null
+            ? t("notPriced")
+            : t.rich("worth", {
+                cost: unitCost(product.unit_cost),
+                value: money(
                   lineValue(
                     Number.isFinite(requested) && requested > 0 ? requested : 0,
                     product.unit_cost,
                   ),
-                )}
-              </b>
-            </>
-          )}
+                ),
+                b: (chunks) => <b>{chunks}</b>,
+              })}
         </Note>
 
         <FieldError>{state.error}</FieldError>
 
         <div className="flex gap-[9px]">
           <Button variant="ghost" className="flex-1" onClick={onClose}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Submit />
         </div>
@@ -166,11 +170,13 @@ function ReserveDialog({
 }
 
 function Submit() {
+  const t = useTranslations("reserve");
+  const tc = useTranslations("common");
   const { pending } = useFormStatus();
 
   return (
     <Button type="submit" className="flex-1" disabled={pending}>
-      {pending ? "Sending…" : "Send request"}
+      {pending ? tc("sending") : t("send")}
     </Button>
   );
 }

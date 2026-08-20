@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { ProductCard } from "@/components/product-card";
 import { ProductTable } from "@/components/product-table";
@@ -15,7 +16,10 @@ import { BulkUpdateButton } from "./bulk-dialog";
 import { InlineQty } from "./inline-qty";
 import { AddProductButton, EditProductButton } from "./product-dialog";
 
-export const metadata: Metadata = { title: "Inventory · Sllr warehouse" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return { title: `${t("inventory.title")} · ${t("app.titleSuffix")}` };
+}
 
 const ROUTE = "/inventory";
 
@@ -29,7 +33,10 @@ export default async function InventoryPage({
   const { q = "", filter } = await searchParams;
   const active: ShelfFilter = isShelfFilter(filter) ? filter : "all";
 
-  const [shelf, view] = await Promise.all([
+  const [t, tc, locale, shelf, view] = await Promise.all([
+    getTranslations("inventory"),
+    getTranslations("common"),
+    getLocale(),
     listProductStock(),
     readViewMode(ROUTE),
   ]);
@@ -39,11 +46,8 @@ export default async function InventoryPage({
   return (
     <>
       <div className="mb-[18px]">
-        <h1 className="text-title font-medium">Inventory</h1>
-        <Muted className="mt-[6px] max-w-[420px]">
-          Your shelf. Reserved is what Sllr has been granted — it is worked out
-          from approved requests, never typed in.
-        </Muted>
+        <h1 className="text-title font-medium">{t("title")}</h1>
+        <Muted className="mt-[6px] max-w-[420px]">{t("lede")}</Muted>
       </div>
 
       <ShelfToolbar q={q} filter={active}>
@@ -56,11 +60,7 @@ export default async function InventoryPage({
 
       {visible.length === 0 ? (
         <Card>
-          <Empty>
-            {shelf.length === 0
-              ? "Nothing on the shelf yet. Add a product to start."
-              : "Nothing matches that. Try a different SKU or clear the filter."}
-          </Empty>
+          <Empty>{shelf.length === 0 ? t("empty") : t("noMatch")}</Empty>
         </Card>
       ) : view === "grid" ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-[14px]">
@@ -92,10 +92,10 @@ export default async function InventoryPage({
             )}
             trailing={[
               {
-                header: "Updated",
+                header: tc("updated"),
                 cell: (product) => (
                   <span className="text-label text-ink-2">
-                    {relativeTime(product.updated_at)}
+                    {relativeTime(product.updated_at, locale)}
                   </span>
                 ),
               },

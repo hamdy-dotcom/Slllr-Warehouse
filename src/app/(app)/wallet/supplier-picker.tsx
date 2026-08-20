@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
@@ -14,6 +15,7 @@ export function SupplierPicker({
   suppliers: SupplierOption[];
   selected: string;
 }) {
+  const t = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -21,10 +23,10 @@ export function SupplierPicker({
 
   return (
     <label className="flex items-center gap-[9px] rounded-[15px] bg-card px-[15px] py-[8px] text-label text-ink-2">
-      Supplier
+      {t("supplier")}
       <Select
         value={selected}
-        aria-label="Supplier"
+        aria-label={t("supplier")}
         onChange={(event) => {
           const params = new URLSearchParams(searchParams);
           params.set("supplier", event.target.value);

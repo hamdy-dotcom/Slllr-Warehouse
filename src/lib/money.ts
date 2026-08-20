@@ -84,10 +84,13 @@ export function rollValue<T>(
   );
 }
 
-/** "4 not priced" — the caveat a value carries, or null when there is none. */
-export function unpricedNote(roll: ValueRoll): string | null {
-  if (roll.unpriced === 0) return null;
-  return `${roll.unpriced} not priced`;
+/**
+ * How many rows a value could not account for, or null when it accounted for
+ * all of them. The caveat a screen prints from it is a translated string, so
+ * the count is what crosses out of here.
+ */
+export function unpricedCount(roll: ValueRoll): number | null {
+  return roll.unpriced === 0 ? null : roll.unpriced;
 }
 
 /**

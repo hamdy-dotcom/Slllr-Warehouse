@@ -39,14 +39,20 @@ export function ProductThumb({
       )}
     >
       {src ? (
-        <Image src={src} alt={alt} fill sizes={sizes} className="object-cover" />
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes={sizes}
+          className="object-cover"
+        />
       ) : (
         <Placeholder />
       )}
 
       {code ? (
-        <span className="absolute bottom-[9px] left-[9px] rounded-[8px] bg-card px-2 py-[3px] font-mono text-[10.5px] text-ink-2">
-          {code}
+        <span className="absolute bottom-[9px] start-[9px] rounded-[8px] bg-card px-2 py-[3px] font-mono text-[10.5px] text-ink-2">
+          <span className="latin">{code}</span>
         </span>
       ) : null}
     </div>

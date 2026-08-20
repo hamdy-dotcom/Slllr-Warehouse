@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { ProductCard } from "@/components/product-card";
 import { ProductTable } from "@/components/product-table";
@@ -11,7 +12,10 @@ import { applyShelfFilter, isShelfFilter, type ShelfFilter } from "@/lib/shelf";
 import { readViewMode } from "@/lib/view-cookie";
 import { ReserveButton } from "./reserve-dialog";
 
-export const metadata: Metadata = { title: "Catalog · Sllr warehouse" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return { title: `${t("catalog.title")} · ${t("app.titleSuffix")}` };
+}
 
 const ROUTE = "/catalog";
 
@@ -23,7 +27,8 @@ export default async function CatalogPage({
   const { q = "", filter } = await searchParams;
   const active: ShelfFilter = isShelfFilter(filter) ? filter : "all";
 
-  const [shelf, view] = await Promise.all([
+  const [t, shelf, view] = await Promise.all([
+    getTranslations("catalog"),
     listProductStock({ activeOnly: true }),
     readViewMode(ROUTE),
   ]);
@@ -33,11 +38,8 @@ export default async function CatalogPage({
   return (
     <>
       <div className="mb-[18px]">
-        <h1 className="text-title font-medium">Catalog</h1>
-        <Muted className="mt-[6px] max-w-[420px]">
-          The supplier&rsquo;s whole shelf. Reserving asks for stock — nothing
-          is deducted until the supplier approves.
-        </Muted>
+        <h1 className="text-title font-medium">{t("title")}</h1>
+        <Muted className="mt-[6px] max-w-[420px]">{t("lede")}</Muted>
       </div>
 
       <ShelfToolbar q={q} filter={active}>
@@ -48,11 +50,7 @@ export default async function CatalogPage({
 
       {visible.length === 0 ? (
         <Card>
-          <Empty>
-            {shelf.length === 0
-              ? "The shelf is empty. Products show up here once the supplier lists them."
-              : "Nothing matches that. Try a different SKU or clear the filter."}
-          </Empty>
+          <Empty>{shelf.length === 0 ? t("emptyShelf") : t("noMatch")}</Empty>
         </Card>
       ) : view === "grid" ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-[14px]">

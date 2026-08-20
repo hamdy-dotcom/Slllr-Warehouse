@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/cn";
@@ -8,6 +9,7 @@ import type { NavItem } from "@/lib/routes";
 
 export function AppNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   return (
     <nav className="mx-auto flex flex-wrap gap-[6px]">
@@ -27,7 +29,7 @@ export function AppNav({ items }: { items: NavItem[] }) {
                 : "text-ink-2 hover:bg-card/70",
             )}
           >
-            {item.label}
+            {t(item.key)}
           </Link>
         );
       })}

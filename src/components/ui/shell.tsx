@@ -1,9 +1,13 @@
+import { useTranslations } from "next-intl";
+
 import { cn } from "@/lib/cn";
 
 /** The five orange bars that make up the Sllr mark. */
 const MARK_HEIGHTS = [9, 16, 22, 14, 7];
 
 export function Logo() {
+  const t = useTranslations("app");
+
   return (
     <div className="flex items-center gap-[9px] text-[17px] font-medium">
       <span className="flex h-[22px] w-[26px] items-end gap-[2px]" aria-hidden>
@@ -15,7 +19,7 @@ export function Logo() {
           />
         ))}
       </span>
-      Sllr warehouse
+      {t("name")}
     </div>
   );
 }

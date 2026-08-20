@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState, useTransition, useId } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ import type { InProgressLine } from "@/lib/data/wallet";
 import { recordSettlements, type RowResult } from "./actions";
 
 export const TH =
-  "px-[10px] pb-[8px] text-left text-th font-normal uppercase tracking-[0.4px] text-ink-2";
+  "px-[10px] pb-[8px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 export const TD = "border-t border-line px-[10px] py-[9px] align-middle";
 
 export type Preview = {
@@ -56,18 +57,19 @@ export function buildPreview(
 export function RecordSettlementsButton({
   lines,
   today,
-  label = "Record delivered or returned",
+  label,
 }: {
   lines: InProgressLine[];
   today: string;
   label?: string;
 }) {
+  const t = useTranslations("wallet");
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button variant="ghost" onClick={() => setOpen(true)}>
-        {label}
+        {label ?? t("recordSettlements")}
       </Button>
       {open ? (
         <SettleDialog
@@ -89,6 +91,11 @@ function SettleDialog({
   today: string;
   onClose: () => void;
 }) {
+  const t = useTranslations("daily");
+  const tc = useTranslations("common");
+  const tcsv = useTranslations("csv");
+  const terr = useTranslations("csvErrors");
+  const tm = useTranslations("movements");
   const toast = useToast();
   const titleId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -106,6 +113,22 @@ function SettleDialog({
   );
   const blocked = preview.filter((entry) => entry.tooMuch).length;
 
+  const template = settlementCsvTemplate(
+    date,
+    {
+      sku: tcsv("sku"),
+      kind: tcsv("kind"),
+      qty: tcsv("qty"),
+      occurred_on: tcsv("occurred_on"),
+      reference: tcsv("reference"),
+    },
+    {
+      dispatched: tcsv("kind_dispatched"),
+      delivered: tcsv("kind_delivered"),
+      returned: tcsv("kind_returned"),
+    },
+  );
+
   function commit() {
     setError(null);
     const body = new FormData();
@@ -120,8 +143,8 @@ function SettleDialog({
       const failed = list.filter((row) => !row.ok).length;
       toast(
         failed === 0
-          ? `Recorded ${n(list.length)} ${list.length === 1 ? "row" : "rows"}`
-          : `${n(failed)} of ${n(list.length)} rows failed`,
+          ? t("recordedRows", { count: list.length })
+          : tm("failedToast", { failed: n(failed), total: n(list.length) }),
       );
     });
   }
@@ -138,12 +161,9 @@ function SettleDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        Record delivered and returned
+        {t("settleTitle")}
       </div>
-      <Muted className="mb-4">
-        Columns are sku, kind, qty, occurred_on, reference. Kind is delivered or
-        returned; a blank date uses the one below.
-      </Muted>
+      <Muted className="mb-4">{t("settleLede")}</Muted>
 
       {results ? (
         <SettleResults
@@ -156,7 +176,7 @@ function SettleDialog({
         />
       ) : (
         <>
-          <Field label="Date these happened on" htmlFor="occurred_on">
+          <Field label={t("dateLabel")} htmlFor="occurred_on">
             <Input
               id="occurred_on"
               type="date"
@@ -167,26 +187,24 @@ function SettleDialog({
 
           <div className="mb-[13px] flex flex-wrap gap-[9px]">
             <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-              Upload CSV
+              {tc("uploadCsv")}
             </Button>
             <Button
               variant="ghost"
               onClick={() => {
                 const url = URL.createObjectURL(
-                  new Blob([settlementCsvTemplate(date)], {
-                    type: "text/csv;charset=utf-8",
-                  }),
+                  new Blob([template], { type: "text/csv;charset=utf-8" }),
                 );
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = "settlements-template.csv";
+                link.download = t("templateName");
                 document.body.append(link);
                 link.click();
                 link.remove();
                 URL.revokeObjectURL(url);
               }}
             >
-              Download CSV template
+              {tc("downloadTemplate")}
             </Button>
             <input
               ref={fileRef}
@@ -204,22 +222,24 @@ function SettleDialog({
               setCsv(event.target.value);
               setError(null);
             }}
-            placeholder={settlementCsvTemplate(date)}
-            aria-label="Paste CSV"
+            placeholder={template}
+            aria-label={tc("pasteCsv")}
+            dir="ltr"
             className="mb-[13px] font-mono text-meta"
           />
 
           {parsed.problems.length > 0 ? (
             <Note>
               <div className="mb-1 font-medium">
-                {parsed.problems.length === 1
-                  ? "1 line was skipped"
-                  : `${n(parsed.problems.length)} lines were skipped`}
+                {tc("linesSkipped", { count: parsed.problems.length })}
               </div>
               <ul className="flex flex-col gap-[2px]">
                 {parsed.problems.slice(0, 5).map((problem) => (
                   <li key={problem.line}>
-                    Line {problem.line}: {problem.message}
+                    {tc("lineNumber", {
+                      line: problem.line,
+                      message: terr(problem.key, problem.params),
+                    })}
                   </li>
                 ))}
               </ul>
@@ -230,12 +250,7 @@ function SettleDialog({
             <>
               <SettlePreview preview={preview} />
               {blocked > 0 ? (
-                <Note>
-                  {blocked === 1
-                    ? "1 row asks for more than is in progress."
-                    : `${n(blocked)} rows ask for more than is in progress.`}{" "}
-                  Nothing is sent until every row fits.
-                </Note>
+                <Note>{t("askMore", { count: blocked })}</Note>
               ) : null}
             </>
           ) : null}
@@ -249,7 +264,7 @@ function SettleDialog({
               onClick={onClose}
               disabled={pending}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               className="flex-1"
@@ -257,8 +272,8 @@ function SettleDialog({
               disabled={pending || parsed.rows.length === 0 || blocked > 0}
             >
               {pending
-                ? "Recording…"
-                : `Record ${n(parsed.rows.length)} ${parsed.rows.length === 1 ? "row" : "rows"}`}
+                ? tc("recording")
+                : t("recordRows", { count: parsed.rows.length })}
             </Button>
           </div>
         </>
@@ -269,25 +284,28 @@ function SettleDialog({
 
 /** Before and after on the in-progress pool, per row. */
 export function SettlePreview({ preview }: { preview: Preview[] }) {
+  const t = useTranslations("daily");
+  const tc = useTranslations("common");
+
   return (
     <div className="scroll-x mb-[13px] max-h-[240px] overflow-y-auto">
       <table className="w-full border-collapse text-body">
         <thead>
           <tr>
-            <th className={TH}>SKU</th>
-            <th className={TH}>Kind</th>
-            <th className={TH}>Qty</th>
-            <th className={TH}>In progress</th>
+            <th className={TH}>{tc("sku")}</th>
+            <th className={TH}>{tc("kind")}</th>
+            <th className={TH}>{tc("qty")}</th>
+            <th className={TH}>{t("inProgressCol")}</th>
           </tr>
         </thead>
         <tbody>
           {preview.map((entry) => (
             <tr key={`${entry.row.sku}-${entry.row.kind}`}>
               <td className={`${TD} font-mono text-meta`}>
-                {entry.row.sku}
+                <span className="latin">{entry.row.sku}</span>
                 {!entry.line ? (
-                  <span className="ml-2 font-sans text-meta text-orange-ink">
-                    nothing in progress
+                  <span className="ms-2 font-sans text-meta text-orange-ink">
+                    {t("nothingInProgress")}
                   </span>
                 ) : null}
               </td>
@@ -300,13 +318,13 @@ export function SettlePreview({ preview }: { preview: Preview[] }) {
                       : "bg-amber-soft text-amber-ink",
                   )}
                 >
-                  {entry.row.kind}
+                  {t(`kind_${entry.row.kind}`)}
                 </span>
               </td>
               <td className={`${TD} tabular-nums`}>{n(entry.row.qty)}</td>
               <td className={`${TD} tabular-nums`}>
                 <span className="text-ink-3">{n(entry.before)}</span>
-                <span className="mx-1 text-ink-3">→</span>
+                <span className="mx-1 text-ink-3">{tc("arrow")}</span>
                 <b
                   className={cn(
                     "font-medium",
@@ -342,36 +360,32 @@ export function SettleResults({
   onDone: () => void;
   onAgain: () => void;
 }) {
+  const t = useTranslations("daily");
+  const tc = useTranslations("common");
+  const tm = useTranslations("movements");
   const failed = results.filter((row) => !row.ok).length;
 
   return (
     <>
       {failed > 0 ? (
-        <Note>
-          {failed === 1
-            ? "1 row did not go through."
-            : `${n(failed)} rows did not go through.`}
-        </Note>
+        <Note>{t("resultFailed", { count: failed })}</Note>
       ) : (
-        <Note calm>
-          All {n(results.length)} {results.length === 1 ? "row" : "rows"} went
-          through.
-        </Note>
+        <Note calm>{t("resultAllOk", { count: n(results.length) })}</Note>
       )}
 
       <div className="scroll-x mb-[13px] max-h-[280px] overflow-y-auto">
         <table className="w-full border-collapse text-body">
           <thead>
             <tr>
-              <th className={TH}>SKU</th>
-              <th className={TH}>Result</th>
+              <th className={TH}>{tc("sku")}</th>
+              <th className={TH}>{tc("result")}</th>
             </tr>
           </thead>
           <tbody>
             {results.map((row, index) => (
               <tr key={`${row.sku}-${index}`}>
                 <td className={`${TD} font-mono text-meta`}>
-                  {row.sku ?? "—"}
+                  <span className="latin">{row.sku ?? tc("dash")}</span>
                 </td>
                 <td className={TD}>
                   <span
@@ -393,10 +407,10 @@ export function SettleResults({
 
       <div className="flex gap-[9px]">
         <Button variant="ghost" className="flex-1" onClick={onAgain}>
-          Record more
+          {tm("recordMore")}
         </Button>
         <Button className="flex-1" onClick={onDone}>
-          Done
+          {tc("done")}
         </Button>
       </div>
     </>

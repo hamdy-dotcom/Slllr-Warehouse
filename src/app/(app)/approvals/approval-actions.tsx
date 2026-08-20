@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function ApprovalActions(props: Props) {
+  const t = useTranslations("approvals");
   const [partialOpen, setPartialOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
 
@@ -35,7 +37,7 @@ export function ApprovalActions(props: Props) {
   return (
     <div className="flex flex-wrap items-center gap-[9px]">
       <Button variant="no" onClick={() => setRejectOpen(true)}>
-        Reject
+        {t("reject")}
       </Button>
 
       <Button
@@ -43,15 +45,15 @@ export function ApprovalActions(props: Props) {
         onClick={() => setPartialOpen(true)}
         disabled={props.available < 1}
       >
-        Approve part
+        {t("approvePart")}
       </Button>
 
       <ApproveForm
         id={props.id}
         qty={capped ? String(grant) : ""}
-        label={capped ? `Approve ${n(grant)}` : "Approve"}
+        label={capped ? t("approveN", { count: n(grant) }) : t("approve")}
         disabled={props.available < 1}
-        toastMessage={`Approved — ${n(grant)} units moved to Reserved for Sllr`}
+        toastMessage={t("approvedToast", { count: n(grant) })}
       />
 
       {partialOpen ? (
@@ -79,6 +81,7 @@ function ApproveForm({
   disabled?: boolean;
   toastMessage: string;
 }) {
+  const t = useTranslations("approvals");
   const toast = useToast();
   const [state, formAction] = useActionState<DecisionState, FormData>(
     approveRequest,
@@ -94,7 +97,12 @@ function ApproveForm({
     <form action={formAction}>
       <input type="hidden" name="id" value={id} />
       {qty ? <input type="hidden" name="qty" value={qty} /> : null}
-      <SubmitButton variant="ok" label={label} busy="Approving…" disabled={disabled} />
+      <SubmitButton
+        variant="ok"
+        label={label}
+        busy={t("approving")}
+        disabled={disabled}
+      />
     </form>
   );
 }
@@ -106,6 +114,8 @@ function PartialDialog({
   available,
   onClose,
 }: Props & { onClose: () => void }) {
+  const t = useTranslations("approvals");
+  const tc = useTranslations("common");
   const toast = useToast();
   const titleId = useId();
   const [state, formAction] = useActionState<DecisionState, FormData>(
@@ -118,7 +128,7 @@ function PartialDialog({
 
   useEffect(() => {
     if (!state.savedAt) return;
-    toast(`Approved — ${n(Number(qty))} units moved to Reserved for Sllr`);
+    toast(t("approvedToast", { count: n(Number(qty)) }));
     onClose();
     // Only react to a fresh decision.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,16 +137,16 @@ function PartialDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        Approve part of this request
+        {t("partialTitle")}
       </div>
       <Muted className="mb-4">
-        {productName} · {n(qtyRequested)} units requested
+        {t("partialLede", { product: productName, count: n(qtyRequested) })}
       </Muted>
 
       <form action={formAction}>
         <input type="hidden" name="id" value={id} />
 
-        <Field label="Units to approve" htmlFor="partial-qty">
+        <Field label={t("unitsToApprove")} htmlFor="partial-qty">
           <Input
             id="partial-qty"
             name="qty"
@@ -150,20 +160,22 @@ function PartialDialog({
         </Field>
 
         <Note calm>
-          {n(available)} left to grant. The request keeps its original{" "}
-          {n(qtyRequested)} on record.
+          {t("leftToGrant", {
+            available: n(available),
+            requested: n(qtyRequested),
+          })}
         </Note>
 
         <FieldError>{state.error}</FieldError>
 
         <div className="flex gap-[9px]">
           <Button variant="ghost" className="flex-1" onClick={onClose}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <SubmitButton
             variant="ok"
-            label={`Approve ${n(Number(qty) || 0)}`}
-            busy="Approving…"
+            label={t("approveN", { count: n(Number(qty) || 0) })}
+            busy={t("approving")}
             className="flex-1"
           />
         </div>
@@ -178,6 +190,7 @@ function RejectDialog({
   qtyRequested,
   onClose,
 }: Props & { onClose: () => void }) {
+  const t = useTranslations("approvals");
   const toast = useToast();
   const titleId = useId();
   const [state, formAction] = useActionState<DecisionState, FormData>(
@@ -187,7 +200,7 @@ function RejectDialog({
 
   useEffect(() => {
     if (!state.savedAt) return;
-    toast("Request rejected");
+    toast(t("rejectedToast"));
     onClose();
     // Only react to a fresh decision.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,21 +209,21 @@ function RejectDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        Reject this request
+        {t("rejectTitle")}
       </div>
       <Muted className="mb-4">
-        {productName} · {n(qtyRequested)} units requested
+        {t("partialLede", { product: productName, count: n(qtyRequested) })}
       </Muted>
 
       <form action={formAction}>
         <input type="hidden" name="id" value={id} />
 
-        <Field label="Reason (optional)" htmlFor="reject-note">
+        <Field label={t("reasonOptional")} htmlFor="reject-note">
           <Textarea
             id="reject-note"
             name="note"
             rows={2}
-            placeholder="Tell the Sllr team why"
+            placeholder={t("reasonPlaceholder")}
           />
         </Field>
 
@@ -218,12 +231,12 @@ function RejectDialog({
 
         <div className="flex gap-[9px]">
           <Button variant="ghost" className="flex-1" onClick={onClose}>
-            Keep it pending
+            {t("keepPending")}
           </Button>
           <SubmitButton
             variant="no"
-            label="Reject request"
-            busy="Rejecting…"
+            label={t("rejectRequest")}
+            busy={t("rejecting")}
             className="flex-1"
           />
         </div>

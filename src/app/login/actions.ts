@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
@@ -17,15 +18,17 @@ export async function signIn(
   const password = String(formData.get("password") ?? "");
   const next = String(formData.get("next") ?? "");
 
+  const t = await getTranslations("login");
+
   if (!email || !password) {
-    return { error: "Enter both an email address and a password." };
+    return { error: t("bothFields") };
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: "That email and password do not match. Try again." };
+    return { error: t("wrong") };
   }
 
   revalidatePath("/", "layout");

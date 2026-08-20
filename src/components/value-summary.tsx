@@ -1,6 +1,8 @@
+import { useTranslations } from "next-intl";
+
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/tag";
-import { money, unpricedNote, type ValueRoll } from "@/lib/money";
+import { money, unpricedCount, type ValueRoll } from "@/lib/money";
 import { shelfValues } from "@/lib/shelf";
 import type { ProductStock } from "@/lib/types";
 import { cn } from "@/lib/cn";
@@ -52,31 +54,33 @@ function Figure({
  * data card competing with the table underneath it.
  */
 export function ValueSummary({ products }: { products: ProductStock[] }) {
+  const t = useTranslations("shelf");
+  const tc = useTranslations("common");
   const values = shelfValues(products);
-  const caveat = unpricedNote(values.stock);
+  const unpriced = unpricedCount(values.stock);
 
   return (
     <Card soft className="mb-[22px]">
       <div className="flex flex-wrap items-start justify-between gap-[18px]">
         <div className="flex flex-wrap items-start gap-x-[42px] gap-y-[16px]">
-          <Figure label="Stock value" roll={values.stock} />
+          <Figure label={t("stockValue")} roll={values.stock} />
           <Figure
-            label="Reserved for Sllr"
+            label={t("reservedForSllr")}
             roll={values.reserved}
             swatch="orange"
           />
           <Figure
-            label="Requested, awaiting approval"
+            label={t("requestedAwaiting")}
             roll={values.pending}
             swatch="amber"
           />
-          <Figure label="Free" roll={values.free} swatch="track" />
+          <Figure label={t("free")} roll={values.free} swatch="track" />
         </div>
 
-        {caveat ? (
-          <Pill tone="warn">{caveat}</Pill>
+        {unpriced ? (
+          <Pill tone="warn">{tc("notPriced", { count: unpriced })}</Pill>
         ) : (
-          <Pill>every SKU priced</Pill>
+          <Pill>{tc("everySkuPriced")}</Pill>
         )}
       </div>
     </Card>

@@ -1,3 +1,5 @@
+import { useTranslations } from "next-intl";
+
 import { ProductThumb } from "@/components/product-thumb";
 import { StockBar } from "@/components/ui/stock-bar";
 import { n } from "@/lib/format";
@@ -20,6 +22,8 @@ export function ProductCard({
   /** Full-width action at the foot of the card. */
   action?: React.ReactNode;
 }) {
+  const t = useTranslations("common");
+  const ts = useTranslations("shelf");
   const oversold = product.free_qty < 0;
 
   return (
@@ -37,15 +41,17 @@ export function ProductCard({
           <span className="text-product font-medium">{product.name}</span>
           {product.is_active ? null : (
             <span className="rounded-pill bg-neutral-soft px-[10px] py-[4px] text-meta text-ink-2">
-              unlisted
+              {ts("unlisted")}
             </span>
           )}
         </div>
-        <div className="font-mono text-meta text-ink-3">{product.sku}</div>
+        <div className="font-mono text-meta text-ink-3">
+          <span className="latin">{product.sku}</span>
+        </div>
       </div>
 
       <div className="flex items-center justify-between text-th text-ink-2">
-        <span>Unit cost</span>
+        <span>{t("unitCost")}</span>
         <b
           className={
             product.unit_cost === null
@@ -64,7 +70,7 @@ export function ProductCard({
       />
 
       <div className="flex items-center justify-between text-th text-ink-2">
-        <span>Total</span>
+        <span>{t("total")}</span>
         {totalSlot ?? (
           <b className="font-medium tabular-nums text-ink">
             {n(product.total_qty)}
@@ -74,13 +80,15 @@ export function ProductCard({
 
       <div className="flex justify-between text-th text-ink-2">
         <span>
-          Reserved <b className="text-orange">{n(product.reserved_qty)}</b>
+          {t("reserved")}{" "}
+          <b className="text-orange">{n(product.reserved_qty)}</b>
         </span>
         <span>
-          Pending <b className="text-amber-ink">{n(product.pending_qty)}</b>
+          {t("pending")}{" "}
+          <b className="text-amber-ink">{n(product.pending_qty)}</b>
         </span>
         <span>
-          Free{" "}
+          {t("free")}{" "}
           <b className={oversold ? "text-orange" : "text-ink"}>
             {n(product.free_qty)}
           </b>
@@ -88,7 +96,7 @@ export function ProductCard({
       </div>
 
       <div className="flex items-center justify-between border-t border-line pt-[9px] text-th text-ink-2">
-        <span>Reserved value</span>
+        <span>{t("reservedValue")}</span>
         <b
           className={
             product.unit_cost === null

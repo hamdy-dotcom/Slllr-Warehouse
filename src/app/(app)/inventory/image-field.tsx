@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { ProductMini } from "@/components/product-thumb";
@@ -25,6 +26,8 @@ export function ImageField({
   onPick: (picked: PickedImage | null) => void;
   onError: (message: string | null) => void;
 }) {
+  const t = useTranslations("inventory");
+  const tc = useTranslations("common");
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,13 +46,13 @@ export function ImageField({
     onError(null);
 
     if (!file.type.startsWith("image/")) {
-      onError("Choose an image file — JPEG, PNG, or WebP.");
+      onError(t("chooseImage"));
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_UPLOAD_BYTES) {
-      onError("That image is too large. Choose one under 4 MB.");
+      onError(t("imageTooLarge"));
       event.target.value = "";
       return;
     }
@@ -61,7 +64,7 @@ export function ImageField({
       setPreview(previewUrl);
       onPick({ blob, previewUrl });
     } catch {
-      onError("Could not read that image. Try another file.");
+      onError(t("imageUnreadable"));
       event.target.value = "";
     } finally {
       setBusy(false);
@@ -77,8 +80,8 @@ export function ImageField({
 
   return (
     <Field
-      label="Product image"
-      hint={`Scaled to ${MAX_WIDTH}px wide before upload.`}
+      label={t("productImage")}
+      hint={t("imageHint", { width: MAX_WIDTH })}
     >
       <div className="flex items-center gap-[11px]">
         {preview ? (
@@ -99,12 +102,12 @@ export function ImageField({
           type="file"
           accept="image/*"
           onChange={handleChange}
-          className="min-w-0 flex-1 text-label text-ink-2 file:mr-3 file:rounded-btn file:border file:border-line file:bg-card file:px-3 file:py-[7px] file:text-label file:font-medium file:text-ink hover:file:bg-card-soft"
+          className="min-w-0 flex-1 text-label text-ink-2 file:me-3 file:rounded-btn file:border file:border-line file:bg-card file:px-3 file:py-[7px] file:text-label file:font-medium file:text-ink hover:file:bg-card-soft"
         />
 
         {preview ? (
           <Button variant="ghost" onClick={clear} disabled={busy}>
-            Clear
+            {tc("clear")}
           </Button>
         ) : null}
       </div>

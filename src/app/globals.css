@@ -73,6 +73,16 @@
     background: var(--color-bg);
   }
 
+  /*
+   * Arabic swaps the sans stack rather than the elements that use it. Poppins
+   * stays behind the Arabic face on purpose: Latin runs inside Arabic text —
+   * a SKU, a warehouse code — then keep the shape they have in English.
+   */
+  html[lang="ar"] {
+    --font-sans: var(--font-plex-arabic), var(--font-poppins), ui-rounded,
+      "Segoe UI", system-ui, sans-serif;
+  }
+
   body {
     background: var(--color-bg);
     color: var(--color-ink);
@@ -111,4 +121,14 @@
   overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
+}
+
+/*
+ * A Latin identifier sitting inside Arabic text. Without the isolate the bidi
+ * algorithm reorders the run against its neighbours, so L03-R02-B07 comes out
+ * as B07-R02-L03 and SKU-1041 loses its hyphen to the wrong side.
+ */
+@utility latin {
+  direction: ltr;
+  unicode-bidi: isolate;
 }

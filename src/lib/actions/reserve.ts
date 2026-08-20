@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 
 import { requireProfile, requireSupplier } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -22,27 +23,40 @@ function revalidateAll() {
   revalidatePath("/approvals");
 }
 
-/** Turns a Postgres exception into copy that says what to do next. */
-function explain(message: string): string {
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
+
+/**
+ * Turns a Postgres exception into copy that says what to do next.
+ *
+ * The exception text itself is English and comes from the schema, so it is
+ * matched on rather than shown. Anything unrecognised falls through untouched
+ * — a raw message the reader can quote is better than a wrong translation.
+ */
+function explain(message: string, t: Translator, ts: Translator): string {
   if (message.includes("quantity must be at least 1")) {
-    return "Enter a quantity of at least 1.";
+    return t("qtyAtLeastOne");
   }
   if (message.includes("only Sllr users can request stock")) {
-    return "Only a Sllr account can request stock.";
+    return t("onlySllrRequests");
   }
   if (message.includes("no free stock left")) {
-    return "There is no free stock left on this product. Reject it, or ask the Sllr team to reduce the quantity.";
+    return t("noFreeStock");
   }
   if (message.includes("only the owning supplier")) {
-    return "That product belongs to another supplier.";
+    return t("otherSupplier");
   }
 
   const already = message.match(/request is already (\w+)/);
   if (already) {
-    return `Someone already ${already[1]} this request. Refresh to see where it stands.`;
+    return t("alreadyDecided", { status: ts(already[1]) });
   }
 
   return message;
+}
+
+/** The two namespaces `explain` needs, fetched together. */
+async function messages(): Promise<[Translator, Translator]> {
+  return Promise.all([getTranslations("errors"), getTranslations("status")]);
 }
 
 export type ReserveState = {
@@ -63,18 +77,19 @@ export async function sendReserveRequest(
 
   const values = { qty: rawQty, hold_until, note };
   const qty = Number(rawQty);
+  const [t, ts] = await messages();
 
   if (!product_id) {
-    return { error: "That product is no longer on the shelf.", values };
+    return { error: t("productGone"), values };
   }
 
   if (!rawQty || !Number.isInteger(qty) || qty < 1) {
-    return { error: "Enter a quantity of at least 1.", values };
+    return { error: t("qtyAtLeastOne"), values };
   }
 
   const profile = await requireProfile();
   if (profile.role === "supplier") {
-    return { error: "Only a Sllr account can request stock.", values };
+    return { error: t("onlySllrRequests"), values };
   }
 
   const supabase = await createClient();
@@ -85,7 +100,7 @@ export async function sendReserveRequest(
     p_note: note || undefined,
   });
 
-  if (error) return { error: explain(error.message), values };
+  if (error) return { error: explain(error.message, t, ts), values };
 
   revalidateAll();
   return { savedAt: Date.now() };
@@ -99,7 +114,8 @@ export async function cancelRequest(
   formData: FormData,
 ): Promise<DecisionState> {
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "That request no longer exists." };
+  const [t, ts] = await messages();
+  if (!id) return { error: t("requestGone") };
 
   await requireProfile();
   const supabase = await createClient();
@@ -111,11 +127,9 @@ export async function cancelRequest(
     .eq("status", "pending")
     .select("id");
 
-  if (error) return { error: explain(error.message) };
+  if (error) return { error: explain(error.message, t, ts) };
   if (!data || data.length === 0) {
-    return {
-      error: "That request is no longer pending. Refresh to see where it stands.",
-    };
+    return { error: t("notPending") };
   }
 
   revalidateAll();
@@ -132,14 +146,15 @@ export async function approveRequest(
   formData: FormData,
 ): Promise<DecisionState> {
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "That request no longer exists." };
+  const [t, ts] = await messages();
+  if (!id) return { error: t("requestGone") };
 
   const rawQty = String(formData.get("qty") ?? "").trim();
   const partial = rawQty !== "";
   const qty = Number(rawQty);
 
   if (partial && (!Number.isInteger(qty) || qty < 1)) {
-    return { error: "Enter a quantity of at least 1." };
+    return { error: t("qtyAtLeastOne") };
   }
 
   await requireSupplier();
@@ -150,7 +165,7 @@ export async function approveRequest(
     p_qty: partial ? qty : undefined,
   });
 
-  if (error) return { error: explain(error.message) };
+  if (error) return { error: explain(error.message, t, ts) };
 
   revalidateAll();
   return { savedAt: Date.now() };
@@ -161,7 +176,8 @@ export async function rejectRequest(
   formData: FormData,
 ): Promise<DecisionState> {
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "That request no longer exists." };
+  const [t, ts] = await messages();
+  if (!id) return { error: t("requestGone") };
 
   const note = String(formData.get("note") ?? "").trim();
 
@@ -173,7 +189,7 @@ export async function rejectRequest(
     p_note: note || undefined,
   });
 
-  if (error) return { error: explain(error.message) };
+  if (error) return { error: explain(error.message, t, ts) };
 
   revalidateAll();
   return { savedAt: Date.now() };

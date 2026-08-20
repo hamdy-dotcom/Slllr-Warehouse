@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useId, useMemo, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,13 @@ type Diff = {
 };
 
 export function BulkUpdateButton({ shelf }: { shelf: ProductStock[] }) {
+  const t = useTranslations("inventory");
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button variant="ghost" onClick={() => setOpen(true)}>
-        Bulk update
+        {t("bulkUpdate")}
       </Button>
       {open ? (
         <BulkDialog shelf={shelf} onClose={() => setOpen(false)} />
@@ -38,7 +40,7 @@ export function BulkUpdateButton({ shelf }: { shelf: ProductStock[] }) {
 }
 
 const TH =
-  "px-[10px] pb-[8px] text-left text-th font-normal uppercase tracking-[0.4px] text-ink-2";
+  "px-[10px] pb-[8px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const TD = "border-t border-line px-[10px] py-[9px] align-middle";
 
 function BulkDialog({
@@ -48,6 +50,11 @@ function BulkDialog({
   shelf: ProductStock[];
   onClose: () => void;
 }) {
+  const t = useTranslations("inventory");
+  const tc = useTranslations("common");
+  const tcsv = useTranslations("csv");
+  const tm = useTranslations("movements");
+  const terr = useTranslations("csvErrors");
   const toast = useToast();
   const titleId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -92,6 +99,12 @@ function BulkDialog({
 
   function downloadTemplate() {
     const csv = toStockCsv(
+      {
+        sku: tcsv("sku"),
+        total_qty: tcsv("total_qty"),
+        warehouse_code: tcsv("warehouse_code"),
+        unit_cost: tcsv("unit_cost"),
+      },
       [...shelf]
         .sort((a, b) => a.sku.localeCompare(b.sku))
         .map((product) => ({
@@ -141,8 +154,11 @@ function BulkDialog({
       const failed = (result.results ?? []).filter((row) => !row.ok).length;
       toast(
         failed === 0
-          ? `Updated ${n(result.results?.length ?? 0)} rows`
-          : `${n(failed)} of ${n(result.results?.length ?? 0)} rows failed`,
+          ? t("updatedRows", { count: n(result.results?.length ?? 0) })
+          : tm("failedToast", {
+              failed: n(failed),
+              total: n(result.results?.length ?? 0),
+            }),
       );
     });
   }
@@ -152,12 +168,9 @@ function BulkDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        Bulk update stock
+        {t("bulkTitle")}
       </div>
-      <Muted className="mb-4">
-        Columns are sku, total_qty, warehouse_code, and unit_cost. The last two
-        are optional — a blank cost leaves the price alone, a dash clears it.
-      </Muted>
+      <Muted className="mb-4">{t("bulkLede")}</Muted>
 
       {results ? (
         <Results
@@ -173,10 +186,10 @@ function BulkDialog({
         <>
           <div className="mb-[13px] flex flex-wrap gap-[9px]">
             <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-              Upload CSV
+              {tc("uploadCsv")}
             </Button>
             <Button variant="ghost" onClick={downloadTemplate}>
-              Download CSV template
+              {tc("downloadTemplate")}
             </Button>
             <input
               ref={fileRef}
@@ -194,24 +207,29 @@ function BulkDialog({
               setText(event.target.value);
               setError(null);
             }}
-            placeholder={
-              "sku,total_qty,warehouse_code,unit_cost\nSKU-1001,320,L01-R01-B01,69.25"
-            }
-            aria-label="Paste CSV"
+            placeholder={t("csvPlaceholder", {
+              sku: tcsv("sku"),
+              total: tcsv("total_qty"),
+              code: tcsv("warehouse_code"),
+              cost: tcsv("unit_cost"),
+            })}
+            aria-label={tc("pasteCsv")}
+            dir="ltr"
             className="mb-[13px] font-mono text-meta"
           />
 
           {parsed.problems.length > 0 ? (
             <Note>
               <div className="mb-1 font-medium">
-                {parsed.problems.length === 1
-                  ? "1 line was skipped"
-                  : `${n(parsed.problems.length)} lines were skipped`}
+                {tc("linesSkipped", { count: parsed.problems.length })}
               </div>
               <ul className="flex flex-col gap-[2px]">
                 {parsed.problems.slice(0, 5).map((problem) => (
                   <li key={problem.line}>
-                    Line {problem.line}: {problem.message}
+                    {tc("lineNumber", {
+                      line: problem.line,
+                      message: terr(problem.key, problem.params),
+                    })}
                   </li>
                 ))}
               </ul>
@@ -221,28 +239,31 @@ function BulkDialog({
           {diffs.length > 0 ? (
             <>
               <Muted className="mb-2">
-                {n(changing)} of {n(diffs.length)} rows change something
-                {unknown > 0 ? ` · ${n(unknown)} SKU not on your shelf` : ""}
+                {t("bulkChanging", {
+                  changing: n(changing),
+                  total: n(diffs.length),
+                })}
+                {unknown > 0 ? t("bulkUnknown", { count: n(unknown) }) : ""}
               </Muted>
 
               <div className="scroll-x mb-[13px] max-h-[240px] overflow-y-auto">
                 <table className="w-full border-collapse text-body">
                   <thead>
                     <tr>
-                      <th className={TH}>SKU</th>
-                      <th className={TH}>Total</th>
-                      <th className={TH}>Warehouse code</th>
-                      <th className={TH}>Unit cost</th>
+                      <th className={TH}>{tc("sku")}</th>
+                      <th className={TH}>{tc("total")}</th>
+                      <th className={TH}>{tc("warehouseCode")}</th>
+                      <th className={TH}>{tc("unitCost")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {diffs.map((diff) => (
                       <tr key={diff.row.sku}>
                         <td className={`${TD} font-mono text-meta`}>
-                          {diff.row.sku}
+                          <span className="latin">{diff.row.sku}</span>
                           {!diff.current ? (
-                            <span className="ml-2 font-sans text-meta text-orange-ink">
-                              not found
+                            <span className="ms-2 font-sans text-meta text-orange-ink">
+                              {t("notFound")}
                             </span>
                           ) : null}
                         </td>
@@ -252,7 +273,9 @@ function BulkDialog({
                               <span className="text-ink-3">
                                 {n(diff.current.total_qty)}
                               </span>
-                              <span className="mx-1 text-ink-3">→</span>
+                              <span className="mx-1 text-ink-3">
+                                {tc("arrow")}
+                              </span>
                               <b
                                 className={cn(
                                   "font-medium",
@@ -272,30 +295,36 @@ function BulkDialog({
                           {diff.row.warehouse_code ? (
                             diff.codeChanged && diff.current ? (
                               <>
-                                <span className="text-ink-3">
+                                <span className="latin text-ink-3">
                                   {diff.current.warehouse_code}
                                 </span>
-                                <span className="mx-1 text-ink-3">→</span>
-                                <b className="font-medium text-orange">
+                                <span className="mx-1 text-ink-3">
+                                  {tc("arrow")}
+                                </span>
+                                <b className="latin font-medium text-orange">
                                   {diff.row.warehouse_code}
                                 </b>
                               </>
                             ) : (
-                              diff.row.warehouse_code
+                              <span className="latin">
+                                {diff.row.warehouse_code}
+                              </span>
                             )
                           ) : (
-                            <span className="text-ink-3">unchanged</span>
+                            <span className="text-ink-3">{t("unchanged")}</span>
                           )}
                         </td>
                         <td className={`${TD} tabular-nums`}>
                           {diff.row.unit_cost === undefined ? (
-                            <span className="text-ink-3">unchanged</span>
+                            <span className="text-ink-3">{t("unchanged")}</span>
                           ) : diff.costChanged && diff.current ? (
                             <>
                               <span className="text-ink-3">
                                 {unitCost(diff.current.unit_cost)}
                               </span>
-                              <span className="mx-1 text-ink-3">→</span>
+                              <span className="mx-1 text-ink-3">
+                                {tc("arrow")}
+                              </span>
                               <b className="font-medium text-orange">
                                 {unitCost(diff.row.unit_cost)}
                               </b>
@@ -321,7 +350,7 @@ function BulkDialog({
               onClick={onClose}
               disabled={pending}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               className="flex-1"
@@ -329,10 +358,8 @@ function BulkDialog({
               disabled={pending || parsed.rows.length === 0}
             >
               {pending
-                ? "Updating…"
-                : `Update ${n(parsed.rows.length)} ${
-                    parsed.rows.length === 1 ? "row" : "rows"
-                  }`}
+                ? t("updating")
+                : t("updateRows", { count: parsed.rows.length })}
             </Button>
           </div>
         </>
@@ -352,32 +379,31 @@ function Results({
   onDone: () => void;
   onAgain: () => void;
 }) {
+  const t = useTranslations("inventory");
+  const tc = useTranslations("common");
+
   return (
     <>
       {failedCount > 0 ? (
-        <Note>
-          {failedCount === 1
-            ? "1 row did not fully go through."
-            : `${n(failedCount)} rows did not fully go through.`}{" "}
-          Quantity and cost are applied separately, so read each row below for
-          what actually changed.
-        </Note>
+        <Note>{t("bulkFailed", { count: failedCount })}</Note>
       ) : (
-        <Note calm>All {n(results.length)} rows went through.</Note>
+        <Note calm>{t("bulkAllOk", { count: n(results.length) })}</Note>
       )}
 
       <div className="scroll-x mb-[13px] max-h-[280px] overflow-y-auto">
         <table className="w-full border-collapse text-body">
           <thead>
             <tr>
-              <th className={TH}>SKU</th>
-              <th className={TH}>Result</th>
+              <th className={TH}>{tc("sku")}</th>
+              <th className={TH}>{tc("result")}</th>
             </tr>
           </thead>
           <tbody>
             {results.map((row) => (
               <tr key={row.sku}>
-                <td className={`${TD} font-mono text-meta`}>{row.sku}</td>
+                <td className={`${TD} font-mono text-meta`}>
+                  <span className="latin">{row.sku}</span>
+                </td>
                 <td className={TD}>
                   <span
                     className={cn(
@@ -398,10 +424,10 @@ function Results({
 
       <div className="flex gap-[9px]">
         <Button variant="ghost" className="flex-1" onClick={onAgain}>
-          Update more
+          {t("updateMore")}
         </Button>
         <Button className="flex-1" onClick={onDone}>
-          Done
+          {tc("done")}
         </Button>
       </div>
     </>

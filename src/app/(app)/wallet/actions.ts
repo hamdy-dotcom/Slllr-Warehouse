@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { rpcTranslator } from "@/lib/rpc-message";
 import type { SettlementKind } from "@/lib/settlements-csv";
 
 export type SettlementRow = {
@@ -49,33 +51,37 @@ export async function recordSettlements(
   formData: FormData,
 ): Promise<SettleState> {
   const raw = String(formData.get("rows") ?? "");
+  const [t, say] = await Promise.all([
+    getTranslations("errors"),
+    rpcTranslator(),
+  ]);
 
   let rows: SettlementRow[];
   try {
     rows = JSON.parse(raw);
   } catch {
-    return { error: "Could not read those rows. Try again." };
+    return { error: t("cannotRead") };
   }
 
   if (!Array.isArray(rows) || rows.length === 0) {
-    return { error: "There is nothing to record yet." };
+    return { error: t("nothingToRecord") };
   }
 
   const profile = await requireProfile();
   if (profile.role === "supplier") {
-    return { error: "Only a Sllr account can record deliveries and returns." };
+    return { error: t("onlySllrSettle") };
   }
 
   for (const row of rows) {
-    if (!row.sku) return { error: "Every row needs a SKU." };
+    if (!row.sku) return { error: t("everyRowNeedsSku") };
     if (!Number.isInteger(row.qty) || row.qty < 1) {
-      return { error: `${row.sku}: enter a quantity of at least 1.` };
+      return { error: t("rowQty", { sku: row.sku }) };
     }
     if (row.kind !== "delivered" && row.kind !== "returned") {
-      return { error: `${row.sku}: pick delivered or returned.` };
+      return { error: t("rowKind", { sku: row.sku }) };
     }
     if (!ISO_DATE.test(row.occurred_on)) {
-      return { error: `${row.sku}: give the date as YYYY-MM-DD.` };
+      return { error: t("rowDate", { sku: row.sku }) };
     }
   }
 
@@ -90,7 +96,7 @@ export async function recordSettlements(
     );
 
   if (stockError) {
-    return { error: `Could not check what is in progress: ${stockError.message}` };
+    return { error: t("checkInProgress", { message: stockError.message }) };
   }
 
   const inProgress = new Map(
@@ -106,7 +112,7 @@ export async function recordSettlements(
   const tooMuch: RowResult[] = [];
   for (const [sku, qty] of wanted) {
     if (!inProgress.has(sku)) {
-      tooMuch.push({ sku, ok: false, message: "SKU not found" });
+      tooMuch.push({ sku, ok: false, message: t("skuNotFound") });
       continue;
     }
     const available = inProgress.get(sku) ?? 0;
@@ -116,8 +122,11 @@ export async function recordSettlements(
         ok: false,
         message:
           available === 0
-            ? "Nothing is in progress for this SKU"
-            : `Only ${available.toLocaleString("en-US")} units are in progress, not ${qty.toLocaleString("en-US")}`,
+            ? t("nothingInProgressSku")
+            : t("onlyInProgress", {
+                available: available.toLocaleString("en-US"),
+                wanted: qty.toLocaleString("en-US"),
+              }),
       });
     }
   }
@@ -132,7 +141,7 @@ export async function recordSettlements(
           .map((row) => ({
             sku: row.sku,
             ok: false,
-            message: "Not recorded — fix the rows above and send again",
+            message: t("notRecordedAbove"),
           })),
       ],
     };
@@ -145,7 +154,10 @@ export async function recordSettlements(
   if (error) return { error: error.message };
 
   revalidateAll();
-  return { savedAt: Date.now(), results: data ?? [] };
+  return {
+    savedAt: Date.now(),
+    results: (data ?? []).map((row) => ({ ...row, message: say(row.message) })),
+  };
 }
 
 export type PaymentState = { error?: string; savedAt?: number };
@@ -161,20 +173,21 @@ export async function recordPayment(
   const reference = String(formData.get("reference") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
-  if (!supplierId) return { error: "Pick a supplier first." };
+  const t = await getTranslations("errors");
+  if (!supplierId) return { error: t("pickSupplier") };
 
   const amount = Number(rawAmount);
   if (!Number.isFinite(amount) || amount <= 0) {
-    return { error: "Enter an amount greater than 0." };
+    return { error: t("amountAboveZero") };
   }
 
   if (!ISO_DATE.test(paidOn)) {
-    return { error: "Give the payment date as YYYY-MM-DD." };
+    return { error: t("paymentDate") };
   }
 
   const profile = await requireProfile();
   if (profile.role === "supplier") {
-    return { error: "Only a Sllr account can record a payment." };
+    return { error: t("onlySllrPayment") };
   }
 
   const supabase = await createClient();

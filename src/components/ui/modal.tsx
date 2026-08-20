@@ -44,8 +44,8 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        // text-left: the dialog can be mounted inside a right-aligned cell.
-        className="max-h-[90vh] w-full max-w-[430px] overflow-auto rounded-modal bg-card p-6 text-left"
+        // text-start: the dialog can be mounted inside an end-aligned cell.
+        className="max-h-[90vh] w-full max-w-[430px] overflow-auto rounded-modal bg-card p-6 text-start"
       >
         {children}
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -26,16 +27,17 @@ import {
 import { ImageField, type PickedImage } from "./image-field";
 
 export function AddProductButton() {
+  const t = useTranslations("inventory");
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Add product</Button>
+      <Button onClick={() => setOpen(true)}>{t("addProduct")}</Button>
       {open ? (
         <ProductDialog
           mode="add"
           onClose={() => setOpen(false)}
-          toastMessage="Product added to the catalog"
+          toastMessage={t("productAdded")}
         />
       ) : null}
     </>
@@ -50,6 +52,8 @@ export function EditProductButton({
   /** The grid view wants the action to span the card. */
   fullWidth?: boolean;
 }) {
+  const t = useTranslations("inventory");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
 
   return (
@@ -59,14 +63,14 @@ export function EditProductButton({
         className={fullWidth ? "w-full" : undefined}
         onClick={() => setOpen(true)}
       >
-        Edit
+        {tc("edit")}
       </Button>
       {open ? (
         <ProductDialog
           mode="edit"
           product={product}
           onClose={() => setOpen(false)}
-          toastMessage="Product updated"
+          toastMessage={t("productUpdated")}
         />
       ) : null}
     </>
@@ -84,6 +88,9 @@ function ProductDialog({
   onClose: () => void;
   toastMessage: string;
 }) {
+  const t = useTranslations("inventory");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const toast = useToast();
   const titleId = useId();
   const [state, formAction] = useActionState<ProductFormState, FormData>(
@@ -124,12 +131,12 @@ function ProductDialog({
           setUploading(false);
           return;
         }
-        toast(`${toastMessage} · image uploaded`);
+        toast(t("imageUploaded", { message: toastMessage }));
         onClose();
       })
       .catch(() => {
         if (cancelled) return;
-        setImageError("Could not upload that image. Try again.");
+        setImageError(te("uploadRetry"));
         setUploading(false);
       });
 
@@ -143,53 +150,58 @@ function ProductDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        {mode === "add" ? "Add product" : "Edit product"}
+        {mode === "add" ? t("addProduct") : t("editProduct")}
       </div>
       <Muted className="mb-[16px]">
-        {product
-          ? `${product.name} · ${product.sku}`
-          : "New line on your shelf"}
+        {product ? (
+          <>
+            {product.name} · <span className="latin">{product.sku}</span>
+          </>
+        ) : (
+          t("newLine")
+        )}
       </Muted>
 
       <form action={formAction}>
         {product ? <input type="hidden" name="id" value={product.id} /> : null}
 
-        <Field label="Product name" htmlFor="name">
+        <Field label={t("productName")} htmlFor="name">
           <Input
             id="name"
             name="name"
             defaultValue={v?.name ?? product?.name ?? ""}
-            placeholder="Cordless kettle 1.7L"
+            placeholder={t("productNamePlaceholder")}
             required
           />
         </Field>
 
-        <Field label="SKU" htmlFor="sku">
+        <Field label={tc("sku")} htmlFor="sku">
           <Input
             id="sku"
             name="sku"
             defaultValue={v?.sku ?? product?.sku ?? ""}
-            placeholder="SKU-9001"
+            placeholder={t("skuPlaceholder")}
+            className="latin"
             required
           />
         </Field>
 
         <Field
-          label="Warehouse code"
+          label={tc("warehouseCode")}
           htmlFor="warehouse_code"
-          hint="Line, rack, bin — for example L03-R02-B07"
+          hint={t("codeHint")}
         >
           <Input
             id="warehouse_code"
             name="warehouse_code"
             defaultValue={v?.warehouse_code ?? product?.warehouse_code ?? ""}
             placeholder="L03-R02-B07"
-            className="font-mono"
+            className="latin font-mono"
             required
           />
         </Field>
 
-        <Field label="Total units on shelf" htmlFor="total_qty">
+        <Field label={t("totalUnits")} htmlFor="total_qty">
           <Input
             id="total_qty"
             name="total_qty"
@@ -202,9 +214,9 @@ function ProductDialog({
         </Field>
 
         <Field
-          label={`Unit cost (${CURRENCY})`}
+          label={t("unitCostLabel", { currency: CURRENCY })}
           htmlFor="unit_cost"
-          hint="Leave blank if this product is not priced yet."
+          hint={t("unitCostHint")}
         >
           <Input
             id="unit_cost"
@@ -219,33 +231,32 @@ function ProductDialog({
 
         <ImageField
           currentUrl={product?.image_url ?? null}
-          productName={product?.name ?? "New product"}
+          productName={product?.name ?? t("newProduct")}
           onPick={setPicked}
           onError={setImageError}
         />
 
         <CheckField
           name="is_active"
-          label="Listed in the Sllr catalog"
-          hint="Unlisting keeps the row and its stock; it only hides the product from Sllr."
+          label={t("listedInCatalog")}
+          hint={t("listedHint")}
           defaultChecked={v?.is_active ?? product?.is_active ?? true}
         />
 
         {product ? (
           <Note calm>
-            Reserved {n(product.reserved_qty)} · pending{" "}
-            {n(product.pending_qty)}. Total cannot go below what is already
-            reserved.
-            {product.unit_cost === null ? null : (
-              <>
-                {" "}
-                Sllr holds{" "}
-                <b>
-                  {money(lineValue(product.reserved_qty, product.unit_cost))}
-                </b>{" "}
-                of this product in custody.
-              </>
-            )}
+            {t("reservedPending", {
+              reserved: n(product.reserved_qty),
+              pending: n(product.pending_qty),
+            })}
+            {product.unit_cost === null
+              ? null
+              : t.rich("custodyNote", {
+                  value: money(
+                    lineValue(product.reserved_qty, product.unit_cost),
+                  ),
+                  b: (chunks) => <b>{chunks}</b>,
+                })}
           </Note>
         ) : null}
 
@@ -258,10 +269,10 @@ function ProductDialog({
             onClick={onClose}
             disabled={uploading}
           >
-            Cancel
+            {tc("cancel")}
           </Button>
           <Submit
-            label={mode === "add" ? "Add product" : "Save"}
+            label={mode === "add" ? t("addProduct") : tc("save")}
             uploading={uploading}
           />
         </div>
@@ -271,11 +282,12 @@ function ProductDialog({
 }
 
 function Submit({ label, uploading }: { label: string; uploading: boolean }) {
+  const tc = useTranslations("common");
   const { pending } = useFormStatus();
 
   return (
     <Button type="submit" className="flex-1" disabled={pending || uploading}>
-      {uploading ? "Uploading…" : pending ? "Saving…" : label}
+      {uploading ? tc("uploading") : pending ? tc("saving") : label}
     </Button>
   );
 }

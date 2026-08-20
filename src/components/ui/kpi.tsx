@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { Card } from "@/components/ui/card";
 import { ArrowButton } from "@/components/ui/button";
@@ -22,24 +23,26 @@ export function Kpi({
   pill: React.ReactNode;
   pillTone?: PillTone;
   seed: number;
-  /** Where the top-right `↗` goes. */
+  /** Where the outward arrow in the top corner goes. */
   href?: string;
 }) {
+  const t = useTranslations("common");
+
   return (
     <Card className="relative flex flex-col gap-[10px]">
       {href ? (
         <Link
           href={href}
-          aria-label={`Open ${label.toLowerCase()}`}
-          className="absolute top-4 right-4 grid size-7 place-items-center rounded-full bg-tint text-[12px] text-ink-2 transition-colors hover:text-ink"
+          aria-label={t("openLabel", { label })}
+          className="absolute top-4 end-4 grid size-7 place-items-center rounded-full bg-tint text-[12px] text-ink-2 transition-colors hover:text-ink"
         >
-          ↗
+          {t("arrowUp")}
         </Link>
       ) : (
         <ArrowButton
           aria-hidden
           tabIndex={-1}
-          className="absolute top-4 right-4"
+          className="absolute top-4 end-4"
         />
       )}
 

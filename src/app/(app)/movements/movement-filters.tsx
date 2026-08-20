@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -7,9 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import {
   DIRECTIONS,
-  DIRECTION_LABELS,
   FILTERABLE_KINDS,
-  KIND_LABELS,
   type Direction,
   type MovementKind,
 } from "@/lib/movements";
@@ -30,6 +29,8 @@ export function MovementFilters({
   q: string;
   children?: React.ReactNode;
 }) {
+  const t = useTranslations("movements");
+  const tc = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -84,15 +85,15 @@ export function MovementFilters({
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder="Search by product, SKU, code, or reference"
-            aria-label="Search movements"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchLabel")}
             className="w-full border-none bg-transparent text-body outline-none placeholder:text-ink-3"
           />
         </div>
 
         <div className="flex gap-[2px] rounded-btn bg-card p-[3px]">
           <Chip active={!direction} onClick={() => pickDirection(undefined)}>
-            All
+            {t("all")}
           </Chip>
           {DIRECTIONS.map((option) => (
             <Chip
@@ -100,7 +101,7 @@ export function MovementFilters({
               active={direction === option}
               onClick={() => pickDirection(option)}
             >
-              {DIRECTION_LABELS[option]}
+              {t(`direction_${option}`)}
             </Chip>
           ))}
         </div>
@@ -115,7 +116,7 @@ export function MovementFilters({
             active={!kind}
             onClick={() => push({ kind: undefined })}
           >
-            Any kind
+            {t("anyKind")}
           </Chip>
           {kinds.map((option) => (
             <Chip
@@ -124,13 +125,13 @@ export function MovementFilters({
               active={kind === option}
               onClick={() => push({ kind: option })}
             >
-              {KIND_LABELS[option]}
+              {t(`kind_${option}`)}
             </Chip>
           ))}
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-[8px] text-label text-ink-2">
-          <label htmlFor="from">From</label>
+        <div className="ms-auto flex flex-wrap items-center gap-[8px] text-label text-ink-2">
+          <label htmlFor="from">{t("from")}</label>
           <input
             id="from"
             type="date"
@@ -139,7 +140,7 @@ export function MovementFilters({
             onChange={(event) => push({ from: event.target.value })}
             className="rounded-btn border border-line bg-card px-[10px] py-[7px] text-label outline-none focus:border-orange"
           />
-          <label htmlFor="to">to</label>
+          <label htmlFor="to">{t("to")}</label>
           <input
             id="to"
             type="date"
@@ -161,7 +162,7 @@ export function MovementFilters({
                 })
               }
             >
-              Clear
+              {tc("clear")}
             </Button>
           ) : null}
         </div>

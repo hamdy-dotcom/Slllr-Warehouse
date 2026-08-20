@@ -1,10 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/cn";
-import { FILTER_LABELS, type ShelfFilter } from "@/lib/shelf";
+import { FILTER_KEYS, type ShelfFilter } from "@/lib/shelf";
 
 const FILTERS: ShelfFilter[] = ["all", "low", "reserved"];
 
@@ -22,6 +23,7 @@ export function ShelfToolbar({
   /** Trailing action, e.g. the inventory "Add product" button. */
   children?: React.ReactNode;
 }) {
+  const t = useTranslations("shelf");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,8 +71,8 @@ export function ShelfToolbar({
         <input
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Search by name, SKU, or warehouse code"
-          aria-label="Search the shelf"
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchLabel")}
           className="w-full border-none bg-transparent text-body outline-none placeholder:text-ink-3"
         />
       </div>
@@ -88,7 +90,7 @@ export function ShelfToolbar({
               : "bg-card text-ink-2 hover:text-ink",
           )}
         >
-          {FILTER_LABELS[option]}
+          {t(FILTER_KEYS[option])}
         </button>
       ))}
 

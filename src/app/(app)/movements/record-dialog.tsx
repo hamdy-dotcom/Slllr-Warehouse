@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useId, useMemo, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import { cn } from "@/lib/cn";
 import { n } from "@/lib/format";
 import {
   KINDS_BY_DIRECTION,
-  KIND_LABELS,
   type Direction,
   type MovementKind,
 } from "@/lib/movements";
@@ -36,6 +36,7 @@ type Props = {
 };
 
 export function RecordMovementButton(props: Props) {
+  const t = useTranslations("movements");
   const [open, setOpen] = useState(false);
   const inbound = props.direction === "in";
 
@@ -45,7 +46,7 @@ export function RecordMovementButton(props: Props) {
         variant={inbound ? "primary" : "ghost"}
         onClick={() => setOpen(true)}
       >
-        {inbound ? "Record inbound" : "Record outbound"}
+        {inbound ? t("recordInbound") : t("recordOutbound")}
       </Button>
       {open ? <RecordDialog {...props} onClose={() => setOpen(false)} /> : null}
     </>
@@ -53,7 +54,7 @@ export function RecordMovementButton(props: Props) {
 }
 
 const TH =
-  "px-[10px] pb-[8px] text-left text-th font-normal uppercase tracking-[0.4px] text-ink-2";
+  "px-[10px] pb-[8px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const TD = "border-t border-line px-[10px] py-[9px] align-middle";
 
 function RecordDialog({
@@ -61,6 +62,11 @@ function RecordDialog({
   shelf,
   onClose,
 }: Props & { onClose: () => void }) {
+  const t = useTranslations("movements");
+  const tc = useTranslations("common");
+  const tcsv = useTranslations("csv");
+  const terr = useTranslations("csvErrors");
+  const te = useTranslations("errors");
   const toast = useToast();
   const titleId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -122,16 +128,16 @@ function RecordDialog({
       const failed = list.filter((row) => !row.ok).length;
       toast(
         failed === 0
-          ? `Recorded ${n(list.length)} ${list.length === 1 ? "movement" : "movements"}`
-          : `${n(failed)} of ${n(list.length)} rows failed`,
+          ? t("recordedToast", { count: list.length })
+          : t("failedToast", { failed: n(failed), total: n(list.length) }),
       );
     });
   }
 
   function submitSingle() {
-    if (!product) return setError("Pick a product first.");
+    if (!product) return setError(te("pickProduct"));
     if (!Number.isInteger(quantity) || quantity < 1) {
-      return setError("Enter a quantity of at least 1.");
+      return setError(te("qtyAtLeastOne"));
     }
     submit([
       {
@@ -145,15 +151,25 @@ function RecordDialog({
     ]);
   }
 
+  const csvHeaders = {
+    sku: tcsv("sku"),
+    qty: tcsv("qty"),
+    kind: tcsv("kind"),
+    reference: tcsv("reference"),
+    note: tcsv("note"),
+  };
+  // The kind written into the template is the enum value, not its label: an
+  // Arabic word inside a comma-separated line reorders under bidi and comes
+  // back unreadable. Arabic spellings still parse if someone types one.
+  const template = movementCsvTemplate(direction, csvHeaders, kinds[0]);
+
   function downloadTemplate() {
     const url = URL.createObjectURL(
-      new Blob([movementCsvTemplate(direction)], {
-        type: "text/csv;charset=utf-8",
-      }),
+      new Blob([template], { type: "text/csv;charset=utf-8" }),
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${inbound ? "inbound" : "outbound"}-template.csv`;
+    link.download = inbound ? t("templateInbound") : t("templateOutbound");
     document.body.append(link);
     link.click();
     link.remove();
@@ -174,12 +190,10 @@ function RecordDialog({
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
       <div id={titleId} className="mb-1 text-product font-medium">
-        {inbound ? "Record inbound stock" : "Record outbound stock"}
+        {inbound ? t("inboundTitle") : t("outboundTitle")}
       </div>
       <Muted className="mb-4">
-        {inbound
-          ? "Stock arriving on your shelf."
-          : "Stock leaving your shelf. It can never take a product below what is reserved for Sllr."}
+        {inbound ? t("inboundLede") : t("outboundLede")}
       </Muted>
 
       {results ? (
@@ -212,20 +226,20 @@ function RecordDialog({
                     : "text-ink-2 hover:text-ink",
                 )}
               >
-                {option === "single" ? "One product" : "Bulk CSV"}
+                {option === "single" ? t("oneProduct") : t("bulkCsv")}
               </button>
             ))}
           </div>
 
           {mode === "single" ? (
             <>
-              <Field label="Product" htmlFor="sku">
+              <Field label={tc("product")} htmlFor="sku">
                 <Select
                   id="sku"
                   value={sku}
                   onChange={(event) => setSku(event.target.value)}
                 >
-                  <option value="">Pick a SKU…</option>
+                  <option value="">{t("pickSku")}</option>
                   {shelf.map((row) => (
                     <option key={row.id} value={row.sku}>
                       {row.sku} · {row.name}
@@ -234,7 +248,7 @@ function RecordDialog({
                 </Select>
               </Field>
 
-              <Field label="Kind" htmlFor="kind">
+              <Field label={tc("kind")} htmlFor="kind">
                 <Select
                   id="kind"
                   value={kind}
@@ -245,13 +259,13 @@ function RecordDialog({
                 >
                   {kinds.map((option) => (
                     <option key={option} value={option}>
-                      {KIND_LABELS[option]}
+                      {t(`kind_${option}`)}
                     </option>
                   ))}
                 </Select>
               </Field>
 
-              <Field label="Quantity" htmlFor="qty">
+              <Field label={tc("qty")} htmlFor="qty">
                 <Input
                   id="qty"
                   type="number"
@@ -265,7 +279,11 @@ function RecordDialog({
                 />
               </Field>
 
-              <Field label="Reference" htmlFor="reference" hint="Optional.">
+              <Field
+                label={tc("reference")}
+                htmlFor="reference"
+                hint={tc("optional")}
+              >
                 <Input
                   id="reference"
                   value={reference}
@@ -274,7 +292,7 @@ function RecordDialog({
                 />
               </Field>
 
-              <Field label="Note" htmlFor="note" hint="Optional.">
+              <Field label={tc("note")} htmlFor="note" hint={tc("optional")}>
                 <Textarea
                   id="note"
                   rows={2}
@@ -285,16 +303,16 @@ function RecordDialog({
 
               {product && after !== null ? (
                 <Note calm={!breachesReserve}>
-                  {n(product.total_qty)} → <b>{n(after)}</b> on the shelf
-                  {breachesReserve ? (
-                    <>
-                      {" "}
-                      — that is below the {n(product.reserved_qty)} reserved for
-                      Sllr, so this will be refused.
-                    </>
-                  ) : (
-                    <> · {n(product.reserved_qty)} stays reserved for Sllr</>
-                  )}
+                  {t.rich("shelfAfter", {
+                    before: n(product.total_qty),
+                    after: n(after),
+                    b: (chunks) => <b>{chunks}</b>,
+                  })}
+                  {breachesReserve
+                    ? t("wouldBreach", { reserved: n(product.reserved_qty) })
+                    : t("staysReserved", {
+                        reserved: n(product.reserved_qty),
+                      })}
                 </Note>
               ) : null}
 
@@ -307,7 +325,7 @@ function RecordDialog({
                   onClick={onClose}
                   disabled={pending}
                 >
-                  Cancel
+                  {tc("cancel")}
                 </Button>
                 <Button
                   className="flex-1"
@@ -315,21 +333,21 @@ function RecordDialog({
                   disabled={pending || !product}
                 >
                   {pending
-                    ? "Recording…"
+                    ? tc("recording")
                     : inbound
-                      ? "Record inbound"
-                      : "Record outbound"}
+                      ? t("recordInbound")
+                      : t("recordOutbound")}
                 </Button>
               </div>
             </>
           ) : (
             <>
               <Muted className="mb-[10px]">
-                Columns are sku, qty, kind, reference, note. Kind must be one of{" "}
-                {kinds.map((k) => KIND_LABELS[k].toLowerCase()).join(", ")}.
-                {!inbound
-                  ? " Dispatches to Sllr are recorded on the daily update screen."
-                  : ""}
+                {/* The values a file actually carries, not their labels —
+                    the same words the template writes and the parser names
+                    back in an error. */}
+                {t("csvLede", { kinds: kinds.join(tc("listSep")) })}
+                {!inbound ? t("csvDispatchNote") : ""}
               </Muted>
 
               <div className="mb-[13px] flex flex-wrap gap-[9px]">
@@ -337,10 +355,10 @@ function RecordDialog({
                   variant="ghost"
                   onClick={() => fileRef.current?.click()}
                 >
-                  Upload CSV
+                  {tc("uploadCsv")}
                 </Button>
                 <Button variant="ghost" onClick={downloadTemplate}>
-                  Download CSV template
+                  {tc("downloadTemplate")}
                 </Button>
                 <input
                   ref={fileRef}
@@ -358,22 +376,24 @@ function RecordDialog({
                   setCsv(event.target.value);
                   setError(null);
                 }}
-                placeholder={movementCsvTemplate(direction)}
-                aria-label="Paste CSV"
+                placeholder={template}
+                aria-label={tc("pasteCsv")}
+                dir="ltr"
                 className="mb-[13px] font-mono text-meta"
               />
 
               {parsed.problems.length > 0 ? (
                 <Note>
                   <div className="mb-1 font-medium">
-                    {parsed.problems.length === 1
-                      ? "1 line was skipped"
-                      : `${n(parsed.problems.length)} lines were skipped`}
+                    {tc("linesSkipped", { count: parsed.problems.length })}
                   </div>
                   <ul className="flex flex-col gap-[2px]">
                     {parsed.problems.slice(0, 5).map((problem) => (
                       <li key={problem.line}>
-                        Line {problem.line}: {problem.message}
+                        {tc("lineNumber", {
+                          line: problem.line,
+                          message: terr(problem.key, problem.params),
+                        })}
                       </li>
                     ))}
                   </ul>
@@ -385,22 +405,22 @@ function RecordDialog({
                   <table className="w-full border-collapse text-body">
                     <thead>
                       <tr>
-                        <th className={TH}>SKU</th>
-                        <th className={TH}>Qty</th>
-                        <th className={TH}>Kind</th>
-                        <th className={TH}>Reference</th>
+                        <th className={TH}>{tc("sku")}</th>
+                        <th className={TH}>{tc("qty")}</th>
+                        <th className={TH}>{tc("kind")}</th>
+                        <th className={TH}>{tc("reference")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {parsed.rows.map((row, index) => (
                         <tr key={`${row.sku}-${index}`}>
                           <td className={`${TD} font-mono text-meta`}>
-                            {row.sku}
+                            <span className="latin">{row.sku}</span>
                           </td>
                           <td className={`${TD} tabular-nums`}>{n(row.qty)}</td>
-                          <td className={TD}>{KIND_LABELS[row.kind]}</td>
+                          <td className={TD}>{t(`kind_${row.kind}`)}</td>
                           <td className={`${TD} text-ink-2`}>
-                            {row.reference ?? "—"}
+                            {row.reference ?? tc("dash")}
                           </td>
                         </tr>
                       ))}
@@ -418,7 +438,7 @@ function RecordDialog({
                   onClick={onClose}
                   disabled={pending}
                 >
-                  Cancel
+                  {tc("cancel")}
                 </Button>
                 <Button
                   className="flex-1"
@@ -428,8 +448,8 @@ function RecordDialog({
                   }
                 >
                   {pending
-                    ? "Recording…"
-                    : `Record ${n(parsed.rows.length)} ${parsed.rows.length === 1 ? "row" : "rows"}`}
+                    ? tc("recording")
+                    : t("recordRows", { count: parsed.rows.length })}
                 </Button>
               </div>
             </>
@@ -451,34 +471,30 @@ function Results({
   onDone: () => void;
   onAgain: () => void;
 }) {
+  const t = useTranslations("movements");
+  const tc = useTranslations("common");
+
   return (
     <>
       {failedCount > 0 ? (
-        <Note>
-          {failedCount === 1
-            ? "1 row was refused and nothing was recorded for it."
-            : `${n(failedCount)} rows were refused and nothing was recorded for them.`}
-        </Note>
+        <Note>{t("refused", { count: failedCount })}</Note>
       ) : (
-        <Note calm>
-          All {n(results.length)} {results.length === 1 ? "row" : "rows"} went
-          through.
-        </Note>
+        <Note calm>{t("allWentThrough", { count: n(results.length) })}</Note>
       )}
 
       <div className="scroll-x mb-[13px] max-h-[280px] overflow-y-auto">
         <table className="w-full border-collapse text-body">
           <thead>
             <tr>
-              <th className={TH}>SKU</th>
-              <th className={TH}>Result</th>
+              <th className={TH}>{tc("sku")}</th>
+              <th className={TH}>{tc("result")}</th>
             </tr>
           </thead>
           <tbody>
             {results.map((row, index) => (
               <tr key={`${row.sku}-${index}`}>
                 <td className={`${TD} font-mono text-meta`}>
-                  {row.sku ?? "—"}
+                  <span className="latin">{row.sku ?? tc("dash")}</span>
                 </td>
                 <td className={TD}>
                   <span
@@ -500,10 +516,10 @@ function Results({
 
       <div className="flex gap-[9px]">
         <Button variant="ghost" className="flex-1" onClick={onAgain}>
-          Record more
+          {t("recordMore")}
         </Button>
         <Button className="flex-1" onClick={onDone}>
-          Done
+          {tc("done")}
         </Button>
       </div>
     </>

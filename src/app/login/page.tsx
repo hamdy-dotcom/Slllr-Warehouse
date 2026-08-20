@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { Card, Muted } from "@/components/ui/card";
 import { Note } from "@/components/ui/field";
 import { Logo } from "@/components/ui/shell";
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Sign in · Sllr warehouse" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return { title: `${t("login.title")} · ${t("app.titleSuffix")}` };
+}
 
 export default async function LoginPage({
   searchParams,
@@ -13,6 +17,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const { next, error } = await searchParams;
+  const t = await getTranslations("login");
 
   return (
     <main className="grid min-h-dvh place-items-center p-[18px]">
@@ -22,24 +27,15 @@ export default async function LoginPage({
         </div>
 
         <Card className="p-6">
-          <h1 className="text-section font-medium">Sign in</h1>
-          <Muted className="mb-[18px]">
-            One shelf, shared between Sllr and the supplier.
-          </Muted>
+          <h1 className="text-section font-medium">{t("title")}</h1>
+          <Muted className="mb-[18px]">{t("lede")}</Muted>
 
-          {error === "no-profile" ? (
-            <Note>
-              That account has no profile yet. Ask an admin to set it up, then
-              sign in again.
-            </Note>
-          ) : null}
+          {error === "no-profile" ? <Note>{t("noProfile")}</Note> : null}
 
           <LoginForm next={next ?? ""} />
         </Card>
 
-        <p className="mt-4 text-center text-meta text-ink-3">
-          Accounts are created in Supabase, not here.
-        </p>
+        <p className="mt-4 text-center text-meta text-ink-3">{t("footnote")}</p>
       </div>
     </main>
   );

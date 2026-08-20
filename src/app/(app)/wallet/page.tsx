@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
 import { Pill } from "@/components/ui/tag";
@@ -15,22 +16,19 @@ import { RecordPaymentButton } from "./payment-dialog";
 import { RecordSettlementsButton } from "./settle-dialog";
 import { SupplierPicker } from "./supplier-picker";
 
-export const metadata: Metadata = { title: "Wallet · Sllr warehouse" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return { title: `${t("wallet.title")} · ${t("app.titleSuffix")}` };
+}
 
 const TH =
-  "px-[10px] pb-[10px] text-left text-th font-normal uppercase tracking-[0.4px] text-ink-2";
+  "px-[10px] pb-[10px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const TD = "border-t border-line px-[10px] py-[13px] align-middle";
 
 const KIND_STYLE = {
   delivered: "bg-green-soft text-green",
   returned: "bg-amber-soft text-amber-ink",
   payment: "bg-neutral-soft text-ink-2",
-} as const;
-
-const KIND_LABEL = {
-  delivered: "Delivered",
-  returned: "Returned",
-  payment: "Payment",
 } as const;
 
 export default async function WalletPage({
@@ -41,7 +39,10 @@ export default async function WalletPage({
   const profile = await requireProfile();
   const params = await searchParams;
 
-  const [wallets, suppliers] = await Promise.all([
+  const [t, tc, locale, wallets, suppliers] = await Promise.all([
+    getTranslations("wallet"),
+    getTranslations("common"),
+    getLocale(),
     listWallets(profile),
     listSuppliers(profile),
   ]);
@@ -68,11 +69,9 @@ export default async function WalletPage({
     <>
       <div className="mb-[18px] flex flex-wrap items-start justify-between gap-[14px]">
         <div>
-          <h1 className="text-title font-medium">Wallet</h1>
+          <h1 className="text-title font-medium">{t("title")}</h1>
           <Muted className="mt-[6px] max-w-[520px]">
-            {canRecord
-              ? "What each supplier is owed for stock Sllr has taken delivery of, and what has been paid."
-              : "What you are owed for stock Sllr has taken delivery of, and what has been paid."}
+            {canRecord ? t("ledeSllr") : t("ledeSupplier")}
           </Muted>
         </div>
 
@@ -96,41 +95,44 @@ export default async function WalletPage({
 
       {!wallet ? (
         <Card>
-          <Empty>No wallet to show yet.</Empty>
+          <Empty>{t("noWallet")}</Empty>
         </Card>
       ) : (
         <>
           <div className="mb-[22px] grid gap-[14px] sm:grid-cols-2">
             <Card>
-              <div className="text-label text-ink-2">Balance owed</div>
+              <div className="text-label text-ink-2">{t("balanceOwed")}</div>
               <div className="mt-[2px] text-kpi font-medium tabular-nums text-orange">
                 {money(wallet.balance)}
               </div>
               <div className="mt-[2px] text-body text-ink-3">
-                {money(wallet.delivered_value)} delivered −{" "}
-                {money(wallet.paid_total)} paid
+                {t("balanceBreakdown", {
+                  delivered: money(wallet.delivered_value),
+                  paid: money(wallet.paid_total),
+                })}
               </div>
               <div className="mt-3">
                 <Pill tone={wallet.balance > 0 ? "hot" : "good"}>
-                  {wallet.balance > 0 ? "payable now" : "nothing outstanding"}
+                  {wallet.balance > 0
+                    ? t("payableNow")
+                    : t("nothingOutstanding")}
                 </Pill>
               </div>
             </Card>
 
             <Card soft>
-              <div className="text-label text-ink-2">In progress</div>
+              <div className="text-label text-ink-2">{t("inProgress")}</div>
               <div className="mt-[2px] text-kpi font-medium tabular-nums">
                 {money(wallet.in_progress_value)}
               </div>
               <div className="mt-[2px] text-body text-ink-3">
-                {n(wallet.in_progress_qty)} units dispatched, not yet settled
+                {t("inProgressUnits", { count: n(wallet.in_progress_qty) })}
               </div>
               <div className="mt-3">
-                <Pill tone="calm">not owed yet</Pill>
+                <Pill tone="calm">{t("notOwedYet")}</Pill>
               </div>
               <Muted className="mt-[10px] max-w-[380px] text-meta">
-                These units have been dispatched but not yet confirmed as
-                delivered or returned. Nothing here is payable until they are.
+                {t("inProgressExplain")}
               </Muted>
             </Card>
           </div>
@@ -138,28 +140,28 @@ export default async function WalletPage({
           <Card>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-[14px]">
               <div>
-                <SectionTitle>Ledger</SectionTitle>
+                <SectionTitle>{t("ledger")}</SectionTitle>
                 <Muted>
                   {ledger.length === 0
-                    ? "Nothing settled or paid yet."
-                    : `${n(ledger.length)} ${ledger.length === 1 ? "entry" : "entries"} · newest first`}
+                    ? t("nothingYet")
+                    : t("entriesCount", { count: ledger.length })}
                 </Muted>
               </div>
               <div className="flex flex-wrap gap-x-[28px] gap-y-[6px] text-label text-ink-2">
                 <span>
-                  Delivered{" "}
+                  {t("delivered")}{" "}
                   <b className="font-medium text-green">
                     {money(wallet.delivered_value)}
                   </b>
                 </span>
                 <span>
-                  Returned{" "}
+                  {t("returned")}{" "}
                   <b className="font-medium text-amber-ink">
                     {money(wallet.returned_value)}
                   </b>
                 </span>
                 <span>
-                  Paid{" "}
+                  {t("paid")}{" "}
                   <b className="font-medium text-ink">
                     {money(wallet.paid_total)}
                   </b>
@@ -168,35 +170,33 @@ export default async function WalletPage({
             </div>
 
             {ledger.length === 0 ? (
-              <Empty>
-                Deliveries, returns, and payments show up here on one timeline.
-              </Empty>
+              <Empty>{t("ledgerEmpty")}</Empty>
             ) : (
               <div className="scroll-x">
                 <table className="w-full border-collapse text-body">
                   <thead>
                     <tr>
-                      <th className={TH}>Date</th>
-                      <th className={TH}>Entry</th>
-                      <th className={TH}>Product</th>
-                      <th className={TH}>Qty</th>
-                      <th className={TH}>Amount</th>
-                      <th className={TH}>Balance</th>
-                      <th className={TH}>Reference</th>
+                      <th className={TH}>{tc("date")}</th>
+                      <th className={TH}>{t("entry")}</th>
+                      <th className={TH}>{tc("product")}</th>
+                      <th className={TH}>{tc("qty")}</th>
+                      <th className={TH}>{t("amount")}</th>
+                      <th className={TH}>{t("balance")}</th>
+                      <th className={TH}>{tc("reference")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ledger.map((entry) => (
                       <tr key={`${entry.kind}-${entry.id}`}>
-                        <td className={`${TD} rounded-l-[14px] text-label`}>
-                          {formatDate(entry.on)}
+                        <td className={`${TD} rounded-s-[14px] text-label`}>
+                          {formatDate(entry.on, locale)}
                         </td>
 
                         <td className={TD}>
                           <span
                             className={`inline-block rounded-pill px-[10px] py-[4px] text-meta ${KIND_STYLE[entry.kind]}`}
                           >
-                            {KIND_LABEL[entry.kind]}
+                            {t(`kind_${entry.kind}`)}
                           </span>
                         </td>
 
@@ -207,19 +207,19 @@ export default async function WalletPage({
                                 {entry.productName}
                               </div>
                               <div className="font-mono text-meta text-ink-3">
-                                {entry.sku}
+                                <span className="latin">{entry.sku}</span>
                               </div>
                             </>
                           ) : (
                             <span className="text-ink-3">
-                              {entry.method ?? "—"}
+                              {entry.method ?? tc("dash")}
                             </span>
                           )}
                         </td>
 
                         <td className={`${TD} tabular-nums`}>
                           {entry.qty === null ? (
-                            <span className="text-ink-3">—</span>
+                            <span className="text-ink-3">{tc("dash")}</span>
                           ) : (
                             n(entry.qty)
                           )}
@@ -227,13 +227,13 @@ export default async function WalletPage({
 
                         <td className={`${TD} tabular-nums`}>
                           {entry.amount === 0 ? (
-                            <span className="text-ink-3">—</span>
+                            <span className="text-ink-3">{tc("dash")}</span>
                           ) : (
                             <b
                               className={
                                 entry.amount > 0
-                                  ? "font-medium text-green"
-                                  : "font-medium text-ink-2"
+                                  ? "latin font-medium text-green"
+                                  : "latin font-medium text-ink-2"
                               }
                             >
                               {entry.amount > 0 ? "+" : "−"}
@@ -248,11 +248,11 @@ export default async function WalletPage({
 
                         <td className={`${TD} text-label text-ink-2`}>
                           {entry.reference ? (
-                            <span className="font-mono text-meta">
+                            <span className="latin font-mono text-meta">
                               {entry.reference}
                             </span>
                           ) : (
-                            <span className="text-ink-3">—</span>
+                            <span className="text-ink-3">{tc("dash")}</span>
                           )}
                           {entry.note ? (
                             <div className="text-meta text-ink-3">

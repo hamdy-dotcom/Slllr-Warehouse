@@ -6,9 +6,9 @@
  * Sllr are not here at all: they are allocated against approved requests on
  * the daily update screen.
  */
+import { foldArabic } from "@/lib/arabic";
 import {
   KINDS_BY_DIRECTION,
-  KIND_LABELS,
   isMovementKind,
   type Direction,
   type MovementKind,
@@ -22,7 +22,11 @@ export type MovementCsvRow = {
   note?: string;
 };
 
-export type MovementCsvProblem = { line: number; message: string };
+export type MovementCsvProblem = {
+  line: number;
+  key: string;
+  params?: Record<string, string | number>;
+};
 
 export type MovementCsvParse = {
   rows: MovementCsvRow[];
@@ -73,6 +77,26 @@ const HEADERS: Record<string, keyof MovementCsvRow> = {
   ref: "reference",
   note: "note",
   notes: "note",
+  // Arabic headers, as the template downloads them.
+  رمز_المنتج: "sku",
+  رمز: "sku",
+  الكميه: "qty",
+  النوع: "kind",
+  المرجع: "reference",
+  ملاحظه: "note",
+};
+
+/** Arabic words for each kind, so a translated template reads back in. */
+const KIND_ALIASES: Record<string, MovementKind> = {
+  شراء: "purchase",
+  ارجاع_للمورد: "return",
+  ارجاع: "return",
+  مرتجع: "return",
+  تصحيح: "correction",
+  بيع_لجهه_اخري: "sale_other",
+  بيع_اخر: "sale_other",
+  تلف: "damage",
+  تالف: "damage",
 };
 
 export function parseMovementCsv(
@@ -88,7 +112,7 @@ export function parseMovementCsv(
   const problems: MovementCsvProblem[] = [];
   if (lines.length === 0) return { rows, problems };
 
-  const first = splitLine(lines[0]).map((cell) => cell.toLowerCase());
+  const first = splitLine(lines[0]).map(foldArabic);
   const hasHeader = first.some((cell) => cell in HEADERS);
 
   const index = hasHeader
@@ -104,7 +128,7 @@ export function parseMovementCsv(
   if (hasHeader && (index.sku === -1 || index.qty === -1)) {
     problems.push({
       line: 1,
-      message: "The header needs a sku column and a qty column.",
+      key: "headerQty",
     });
     return { rows, problems };
   }
@@ -121,7 +145,7 @@ export function parseMovementCsv(
 
     const sku = at(index.sku);
     if (!sku) {
-      problems.push({ line: lineNumber, message: "No SKU on this line." });
+      problems.push({ line: lineNumber, key: "noSku" });
       return;
     }
 
@@ -129,22 +153,20 @@ export function parseMovementCsv(
     if (!Number.isInteger(qty) || qty < 1) {
       problems.push({
         line: lineNumber,
-        message: `${sku} needs a whole quantity of at least 1, not "${at(index.qty)}".`,
+        key: "qtyAtLeastOne",
+        params: { sku, value: at(index.qty) },
       });
       return;
     }
 
-    const rawKind = at(index.kind)
-      .toLowerCase()
-      .replace(/[\s-]+/g, "_");
-    const kind = rawKind === "" ? allowed[0] : rawKind;
+    const folded = foldArabic(at(index.kind));
+    const kind = folded === "" ? allowed[0] : (KIND_ALIASES[folded] ?? folded);
 
     if (!isMovementKind(kind) || !allowed.includes(kind)) {
       problems.push({
         line: lineNumber,
-        message: `${sku}: "${at(index.kind)}" is not one of ${allowed
-          .map((k) => KIND_LABELS[k].toLowerCase())
-          .join(", ")}.`,
+        key: "badKind",
+        params: { sku, value: at(index.kind), kinds: allowed.join(", ") },
       });
       return;
     }
@@ -164,9 +186,30 @@ export function parseMovementCsv(
   return { rows, problems };
 }
 
-export function movementCsvTemplate(direction: Direction): string {
-  const kind = KINDS_BY_DIRECTION[direction][0];
-  return ["sku,qty,kind,reference,note", `SKU-1001,120,${kind},PO-4821,`].join(
-    "\n",
-  );
+export type MovementCsvHeaders = {
+  sku: string;
+  qty: string;
+  kind: string;
+  reference: string;
+  note: string;
+};
+
+/**
+ * The template downloads in the reader's own language, headers and kind alike.
+ * Both spellings parse back, so a file written in one locale still uploads in
+ * the other.
+ */
+export function movementCsvTemplate(
+  direction: Direction,
+  headers: MovementCsvHeaders,
+  kindWord: string,
+): string {
+  const header = [
+    headers.sku,
+    headers.qty,
+    headers.kind,
+    headers.reference,
+    headers.note,
+  ].join(",");
+  return [header, `SKU-1001,120,${kindWord},PO-4821,`].join("\n");
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { useToast } from "@/components/ui/toast";
@@ -22,6 +23,7 @@ export function InlineQty({
   totalQty: number;
   reservedQty: number;
 }) {
+  const t = useTranslations("inventory");
   const toast = useToast();
   const [value, setValue] = useState(String(totalQty));
   const [rejected, setRejected] = useState(false);
@@ -55,7 +57,7 @@ export function InlineQty({
 
       setRejected(false);
       if (result.total_qty !== undefined) setValue(String(result.total_qty));
-      toast("Stock updated");
+      toast(t("stockUpdated"));
     });
   }
 
@@ -72,7 +74,7 @@ export function InlineQty({
       inputMode="numeric"
       value={value}
       disabled={pending}
-      aria-label={`Total units, currently ${totalQty}. At least ${reservedQty} is reserved.`}
+      aria-label={t("qtyAria", { total: totalQty, reserved: reservedQty })}
       aria-invalid={rejected || undefined}
       onChange={(event) => {
         setRejected(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useOptimistic, useTransition } from "react";
 
 import { cn } from "@/lib/cn";
@@ -9,9 +10,30 @@ import type { ToggleRoute, ViewMode } from "@/lib/view-mode";
 function GridIcon() {
   return (
     <svg viewBox="0 0 16 16" aria-hidden className="size-[15px]">
-      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.6" fill="currentColor" />
-      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1.6" fill="currentColor" />
-      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1.6" fill="currentColor" />
+      <rect
+        x="1.5"
+        y="1.5"
+        width="5.5"
+        height="5.5"
+        rx="1.6"
+        fill="currentColor"
+      />
+      <rect
+        x="9"
+        y="1.5"
+        width="5.5"
+        height="5.5"
+        rx="1.6"
+        fill="currentColor"
+      />
+      <rect
+        x="1.5"
+        y="9"
+        width="5.5"
+        height="5.5"
+        rx="1.6"
+        fill="currentColor"
+      />
       <rect x="9" y="9" width="5.5" height="5.5" rx="1.6" fill="currentColor" />
     </svg>
   );
@@ -21,15 +43,26 @@ function RowsIcon() {
   return (
     <svg viewBox="0 0 16 16" aria-hidden className="size-[15px]">
       <rect x="1.5" y="2" width="13" height="3" rx="1.4" fill="currentColor" />
-      <rect x="1.5" y="6.5" width="13" height="3" rx="1.4" fill="currentColor" />
+      <rect
+        x="1.5"
+        y="6.5"
+        width="13"
+        height="3"
+        rx="1.4"
+        fill="currentColor"
+      />
       <rect x="1.5" y="11" width="13" height="3" rx="1.4" fill="currentColor" />
     </svg>
   );
 }
 
-const OPTIONS: { mode: ViewMode; label: string; icon: React.ReactNode }[] = [
-  { mode: "grid", label: "Grid", icon: <GridIcon /> },
-  { mode: "rows", label: "Rows", icon: <RowsIcon /> },
+const OPTIONS: {
+  mode: ViewMode;
+  key: "grid" | "rows";
+  icon: React.ReactNode;
+}[] = [
+  { mode: "grid", key: "grid", icon: <GridIcon /> },
+  { mode: "rows", key: "rows", icon: <RowsIcon /> },
 ];
 
 /**
@@ -44,13 +77,14 @@ export function ViewToggle({
   route: ToggleRoute;
   mode: ViewMode;
 }) {
+  const t = useTranslations("shelf");
   const [, startTransition] = useTransition();
   const [shown, setShown] = useOptimistic(mode);
 
   return (
     <div
       role="group"
-      aria-label="Layout"
+      aria-label={t("layout")}
       className="flex gap-[2px] rounded-btn bg-card p-[3px]"
     >
       {OPTIONS.map((option) => {
@@ -61,7 +95,7 @@ export function ViewToggle({
             key={option.mode}
             type="button"
             aria-pressed={active}
-            title={option.label}
+            title={t(option.key)}
             onClick={() => {
               if (active) return;
               startTransition(async () => {
@@ -77,7 +111,7 @@ export function ViewToggle({
             )}
           >
             {option.icon}
-            <span className="sr-only">{option.label}</span>
+            <span className="sr-only">{t(option.key)}</span>
           </button>
         );
       })}

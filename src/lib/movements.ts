@@ -12,21 +12,20 @@ export type MovementKind = Database["public"]["Enums"]["movement_kind"];
 
 export const DIRECTIONS: Direction[] = ["in", "out"];
 
-export const DIRECTION_LABELS: Record<Direction, string> = {
-  in: "Inbound",
-  out: "Outbound",
-};
-
-export const KIND_LABELS: Record<MovementKind, string> = {
-  purchase: "Purchase",
-  return: "Return",
-  correction: "Correction",
-  // The enum value stays release_sllr — see docs/dispatch.sql. Only the
-  // label changes, so nothing in the database has to move.
-  release_sllr: "Dispatch to Sllr",
-  sale_other: "Sold elsewhere",
-  damage: "Damage",
-};
+/**
+ * Every kind the enum carries. Labels live in the message catalogues under
+ * `movements.kind_<kind>` — the enum value stays `release_sllr` whatever a
+ * screen calls it, so nothing in the database has to move for a rename or a
+ * translation.
+ */
+export const MOVEMENT_KINDS: MovementKind[] = [
+  "purchase",
+  "return",
+  "correction",
+  "release_sllr",
+  "sale_other",
+  "damage",
+];
 
 /**
  * Which kinds a direction offers when recording a movement by hand.
@@ -61,7 +60,7 @@ export function isDirection(value: string | undefined): value is Direction {
 export function isMovementKind(
   value: string | undefined,
 ): value is MovementKind {
-  return value !== undefined && value in KIND_LABELS;
+  return value !== undefined && MOVEMENT_KINDS.includes(value as MovementKind);
 }
 
 /** Whether a kind is valid for a direction. */

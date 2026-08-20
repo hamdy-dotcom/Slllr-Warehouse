@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { requireProfile } from "@/lib/auth";
@@ -11,7 +12,10 @@ import {
 import { SupplierPicker } from "@/app/(app)/wallet/supplier-picker";
 import { DailyForm } from "./daily-form";
 
-export const metadata: Metadata = { title: "Daily update · Sllr warehouse" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return { title: `${t("daily.title")} · ${t("app.titleSuffix")}` };
+}
 
 /** Yesterday, in the same `YYYY-MM-DD` shape the RPC takes. */
 function yesterday(now: number = Date.now()): string {
@@ -28,7 +32,10 @@ export default async function DailyPage({
   if (profile.role === "supplier") redirect("/wallet");
 
   const params = await searchParams;
-  const suppliers = await listSuppliers(profile);
+  const [t, suppliers] = await Promise.all([
+    getTranslations("daily"),
+    listSuppliers(profile),
+  ]);
 
   const selectedId =
     suppliers.find((supplier) => supplier.id === params.supplier)?.id ??
@@ -48,13 +55,8 @@ export default async function DailyPage({
     <>
       <div className="mb-[18px] flex flex-wrap items-start justify-between gap-[14px]">
         <div>
-          <h1 className="text-title font-medium">Daily update</h1>
-          <Muted className="mt-[6px] max-w-[520px]">
-            Everything that moved, in one paste — dispatched off the shelf,
-            delivered, and returned. Every row shows the pool it draws from
-            before and after, so the day can be checked before any of it is
-            committed.
-          </Muted>
+          <h1 className="text-title font-medium">{t("title")}</h1>
+          <Muted className="mt-[6px] max-w-[520px]">{t("lede")}</Muted>
         </div>
 
         {suppliers.length > 1 && selectedId ? (
@@ -64,7 +66,7 @@ export default async function DailyPage({
 
       {!supplier ? (
         <Card>
-          <Empty>No suppliers to settle against yet.</Empty>
+          <Empty>{t("noSuppliers")}</Empty>
         </Card>
       ) : (
         <DailyForm
