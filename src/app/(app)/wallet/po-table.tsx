@@ -5,12 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
 
 import { ProductMini } from "@/components/product-thumb";
-import { Progress } from "@/components/ui/progress";
+import { Progress, StackedProgress } from "@/components/ui/progress";
 import { cn } from "@/lib/cn";
 import { formatDate, n } from "@/lib/format";
 import { money } from "@/lib/money";
 import {
-  PO_STATUS_KEYS,
+  poStatusKey,
+  poLeftShelf,
   type Po,
   type PoSettlementEntry,
   type PoSort,
@@ -202,12 +203,7 @@ export function PoTable({
                     ) : null}
                   </td>
 
-                  <Qty
-                    qty={po.qty_in_progress}
-                    value={po.in_progress_value}
-                    pct={po.pct_in_progress}
-                    tone="orange"
-                  />
+                  <Dispatched po={po} />
                   <Qty
                     qty={po.qty_delivered}
                     value={po.delivered_value}
@@ -225,7 +221,11 @@ export function PoTable({
                           "bg-neutral-soft text-ink-2",
                       )}
                     >
-                      {t(PO_STATUS_KEYS[po.po_status])}
+                      {/* An unknown literal shows itself rather than a
+                          broken lookup. */}
+                      {poStatusKey(po.po_status)
+                        ? t(poStatusKey(po.po_status) as string)
+                        : po.po_status}
                     </span>
                   </td>
 
@@ -334,6 +334,55 @@ export function PoTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * The dispatched cell.
+ *
+ * The number is the live pool — units with customers right now. The bar and
+ * the percentage answer a different question: how much of this PO has left
+ * the shelf at all. Those two come apart as soon as anything is delivered,
+ * and scoring the bar on the pool alone made a fully drained PO read as
+ * half-served while the PO behind it in the queue looked served first.
+ *
+ * So the bar stacks all three states a departed unit can be in, and the
+ * percentage is their total over approved. Whatever is left of the track is
+ * still on the shelf: outstanding, or released back.
+ */
+function Dispatched({ po }: { po: Po }) {
+  const gone = poLeftShelf(po);
+
+  return (
+    <td className={`${TD} text-end tabular-nums`}>
+      {gone.qty === 0 ? (
+        <span className="text-ink-3">—</span>
+      ) : (
+        <>
+          {po.qty_in_progress === 0 ? (
+            // Everything that went out has since been settled: the pool is
+            // empty, but the PO still left the shelf in full.
+            <span className="text-ink-3">—</span>
+          ) : (
+            <b className="font-medium">{n(po.qty_in_progress)}</b>
+          )}
+          <div className="text-meta text-ink-3">
+            {Math.round(gone.pct)}%
+            {po.qty_in_progress === 0
+              ? null
+              : ` · ${money(po.in_progress_value)}`}
+          </div>
+          <StackedProgress
+            className="mt-[4px] h-[4px]"
+            segments={[
+              { pct: gone.dispatchedPct, tone: "orange" },
+              { pct: gone.deliveredPct, tone: "green" },
+              { pct: gone.returnedPct, tone: "amber" },
+            ]}
+          />
+        </>
+      )}
+    </td>
   );
 }
 

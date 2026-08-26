@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { Select } from "@/components/ui/field";
-import { PO_STATUSES, PO_STATUS_KEYS } from "@/lib/po";
+import { PO_STATUSES, poStatusKey } from "@/lib/po";
 
 /**
  * Status, supplier and product search for the PO table, held in the URL like
@@ -85,7 +85,7 @@ export function PoFilters({
           <option value="">{t("allStatuses")}</option>
           {PO_STATUSES.map((option) => (
             <option key={option} value={option}>
-              {t(PO_STATUS_KEYS[option])}
+              {t(poStatusKey(option) as string)}
             </option>
           ))}
         </Select>

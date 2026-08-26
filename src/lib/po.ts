@@ -31,7 +31,7 @@
 export const PO_STATUSES = [
   "awaiting dispatch",
   "part dispatched",
-  "in progress",
+  "dispatched",
   "settled",
   "cancelled",
 ] as const;
@@ -42,14 +42,23 @@ export function isPoStatus(value: string | undefined): value is PoStatus {
   return PO_STATUSES.includes(value as PoStatus);
 }
 
-/** Message keys under `po`, since the stored values are not display copy. */
-export const PO_STATUS_KEYS: Record<PoStatus, string> = {
+/**
+ * Message keys under `po`, since the stored values are not display copy.
+ *
+ * A literal the view starts emitting that is not in here has no key, so
+ * callers fall back to the raw value rather than rendering a broken lookup.
+ */
+const STATUS_KEYS: Record<PoStatus, string> = {
   "awaiting dispatch": "statusAwaiting",
   "part dispatched": "statusPartDispatched",
-  "in progress": "statusInProgress",
+  dispatched: "statusDispatched",
   settled: "statusSettled",
   cancelled: "statusCancelled",
 };
+
+export function poStatusKey(status: string): string | null {
+  return STATUS_KEYS[status as PoStatus] ?? null;
+}
 
 export type Po = {
   po_id: string;
@@ -182,6 +191,37 @@ export function sortPos(pos: Po[], sort: PoSort, dir: SortDir): Po[] {
   });
 
   return rows;
+}
+
+/**
+ * How much of a PO has left the shelf, and in what state it sits now.
+ *
+ * Dispatched, delivered and returned are all units that went out: a delivery
+ * or a return moves a unit on from dispatched, it does not put it back. So
+ * "gone" is the three added together, and a PO with nothing outstanding is
+ * fully gone however much of it has since been settled.
+ *
+ * Worked out from the quantities rather than by adding the view's three
+ * percentages, which each round on their own and drift a point off the total.
+ */
+export function poLeftShelf(po: Po): {
+  qty: number;
+  pct: number;
+  dispatchedPct: number;
+  deliveredPct: number;
+  returnedPct: number;
+} {
+  const qty = po.qty_in_progress + po.qty_delivered + po.qty_returned;
+  const share = (part: number) =>
+    po.qty_approved <= 0 ? 0 : (part / po.qty_approved) * 100;
+
+  return {
+    qty,
+    pct: share(qty),
+    dispatchedPct: share(po.qty_in_progress),
+    deliveredPct: share(po.qty_delivered),
+    returnedPct: share(po.qty_returned),
+  };
 }
 
 export type PoTotals = {

@@ -508,7 +508,6 @@
     "cancelledNote": "أُعيدت {qty}",
     "statusAwaiting": "بانتظار الصرف",
     "statusPartDispatched": "مصروف جزئيًا",
-    "statusInProgress": "مصروف",
     "statusSettled": "مُسوّى",
     "statusCancelled": "ملغى",
     "allStatuses": "كل الحالات",
@@ -540,6 +539,7 @@
     "releaseDone": "أُعيدت {qty} وحدة",
     "releaseFailed": "لم يتم هذا التحرير.",
     "identity": "المعتمد = المصروف + المُسلَّم + المُرتجع + المتبقي + الملغى. المصروف هو ما لدى العملاء الآن بانتظار التسليم أو الإرجاع.",
-    "colDispatchedTitle": "لدى العملاء الآن، بانتظار التسليم أو الإرجاع"
+    "colDispatchedTitle": "الوحدات لدى العملاء الآن. الشريط والنسبة يوضحان كم غادر الرف من أمر الشراء — المصروف والمُسلَّم والمُرتجع معًا.",
+    "statusDispatched": "مصروف"
   }
 }

@@ -508,7 +508,6 @@
     "cancelledNote": "{qty} released back",
     "statusAwaiting": "awaiting dispatch",
     "statusPartDispatched": "part dispatched",
-    "statusInProgress": "dispatched",
     "statusSettled": "settled",
     "statusCancelled": "cancelled",
     "allStatuses": "All statuses",
@@ -540,6 +539,7 @@
     "releaseDone": "Released {qty} units back",
     "releaseFailed": "That release did not go through.",
     "identity": "Approved = Dispatched + Delivered + Returned + Outstanding + Cancelled. Dispatched is what is with customers now, waiting to be delivered or returned.",
-    "colDispatchedTitle": "With customers now, awaiting delivery or return"
+    "colDispatchedTitle": "Units with customers now. The bar and percentage are how much of the PO has left the shelf — dispatched, delivered and returned together.",
+    "statusDispatched": "dispatched"
   }
 }
