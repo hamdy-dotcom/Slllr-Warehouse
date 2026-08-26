@@ -95,6 +95,23 @@ The same rules hold in Arabic: buttons name the action ("إرسال الطلب",
 "اعتماد 340"), errors say what to do ("أدخل رقمًا لا يقل عن 450."), and no
 message ends in an exclamation mark.
 
+## Words
+
+One word, one meaning, everywhere.
+
+**Dispatched** is the live pool: stock that has left the warehouse to
+customers and is waiting to be delivered or returned. It is never the running
+total of everything that has ever been dispatched — that counter exists in the
+database and stays there.
+
+**Outstanding** is approved and still on the shelf, not yet dispatched.
+**Delivered** and **returned** are settled and have left the pool.
+**Cancelled** was released back to the supplier; approved quantity never
+shrinks to account for it.
+
+A row about a PO adds up: approved = dispatched + delivered + returned +
+outstanding + cancelled.
+
 ## Direction
 
 Arabic renders right to left: `<html dir="rtl" lang="ar">`, set from the

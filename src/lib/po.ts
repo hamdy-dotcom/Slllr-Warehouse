@@ -14,8 +14,17 @@
  *   returned   newest → oldest
  *   release    newest → oldest
  *
- * `qty_approved` never shrinks. Releasing raises `qty_cancelled` instead, and
- * outstanding is `qty_approved - qty_dispatched - qty_cancelled`.
+ * `qty_approved` never shrinks. Releasing raises `qty_cancelled` instead, so
+ * a PO always reads as one identity:
+ *
+ *   approved = dispatched + delivered + returned + outstanding + cancelled
+ *
+ * **Dispatched means the live pool** — units with customers now, waiting to be
+ * delivered or returned — which is `qty_in_progress` in the view. The view
+ * also carries `qty_dispatched`, a cumulative counter of everything that ever
+ * left, including units since settled; it is deliberately not on this type,
+ * because a total that only grows would contradict the identity above
+ * anywhere it was shown.
  */
 
 /** Exactly the strings `po_settlement.po_status` stores, spaces and all. */
@@ -58,7 +67,6 @@ export type Po = {
   unit_cost: number | null;
   qty_requested: number;
   qty_approved: number;
-  qty_dispatched: number;
   qty_cancelled: number;
   qty_outstanding: number;
   qty_delivered: number;
@@ -70,7 +78,6 @@ export type Po = {
   returned_value: number;
   in_progress_value: number;
   cancelled_value: number;
-  pct_dispatched: number;
   pct_in_progress: number;
   pct_delivered: number;
   pct_returned: number;

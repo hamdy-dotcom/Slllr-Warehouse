@@ -32,13 +32,24 @@ const HTH =
   "px-[10px] pb-[8px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const HTD = "border-t border-line px-[10px] py-[8px] align-middle";
 
-const COLUMNS: { sort: PoSort; key: string; numeric?: boolean }[] = [
+const COLUMNS: {
+  sort: PoSort;
+  key: string;
+  numeric?: boolean;
+  /** Extra explanation on the header, where the word carries a definition. */
+  titleKey?: string;
+}[] = [
   { sort: "date", key: "colDate" },
   { sort: "product", key: "colProduct" },
   { sort: "ref", key: "colRef" },
   { sort: "approved", key: "colApproved", numeric: true },
   { sort: "value", key: "colValue", numeric: true },
-  { sort: "in_progress", key: "colInProgress", numeric: true },
+  {
+    sort: "in_progress",
+    key: "colInProgress",
+    numeric: true,
+    titleKey: "colDispatchedTitle",
+  },
   { sort: "delivered", key: "colDelivered", numeric: true },
   { sort: "returned", key: "colReturned", numeric: true },
   { sort: "outstanding", key: "colOutstanding", numeric: true },
@@ -114,7 +125,11 @@ export function PoTable({
                   <button
                     type="button"
                     onClick={() => sortBy(column.sort)}
-                    title={t("sortBy", { column: t(column.key) })}
+                    title={
+                      column.titleKey
+                        ? t(column.titleKey)
+                        : t("sortBy", { column: t(column.key) })
+                    }
                     className={cn(
                       "inline-flex items-center gap-[4px] uppercase tracking-[0.4px] transition-colors hover:text-ink",
                       active && "font-medium text-ink",

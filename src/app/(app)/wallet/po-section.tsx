@@ -55,6 +55,7 @@ export async function PoSection({
           <SectionTitle>{t("title")}</SectionTitle>
           <Muted className="mt-[2px]">{t("lede")}</Muted>
           <Muted className="mt-[6px]">{t("queueNote")}</Muted>
+          <Muted className="mt-[6px]">{t("identity")}</Muted>
         </div>
 
         <div className="flex flex-wrap gap-x-[28px] gap-y-[8px]">

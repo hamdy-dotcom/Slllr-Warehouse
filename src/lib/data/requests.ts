@@ -20,10 +20,12 @@ function normaliseRequest(row: DispatchRow): RequestDispatch {
     requested_by: row.requested_by as string,
     qty_requested: row.qty_requested ?? 0,
     qty_approved: row.qty_approved,
-    qty_dispatched: row.qty_dispatched ?? 0,
     qty_outstanding: row.qty_outstanding,
     outstanding_value: row.outstanding_value,
-    dispatched_value: row.dispatched_value,
+    qty_in_progress: null,
+    qty_delivered: null,
+    qty_returned: null,
+    qty_cancelled: null,
     status: row.status as RequestDispatch["status"],
     hold_until: row.hold_until,
     note: row.note,
@@ -85,7 +87,57 @@ export async function listMyRequests(): Promise<RequestWithStock[]> {
 
   if (error) throw new Error(`Could not load your requests: ${error.message}`);
 
-  return withStock((data ?? []).map(normaliseRequest));
+  return withStock(await withLivePool((data ?? []).map(normaliseRequest)));
+}
+
+/**
+ * Stitches each request's live position onto it from `po_settlement`.
+ *
+ * A request that the supplier approved is a PO, keyed by the same id, so the
+ * pool figures come straight across. One that is still pending or was
+ * rejected has no PO and keeps nulls — there is nothing with customers to
+ * report for it.
+ *
+ * Outstanding comes across too, deliberately. `reserve_request_dispatch`
+ * still works it out as approved − dispatched and does not subtract
+ * `qty_cancelled`, so on a PO that has had quantity released it reports more
+ * reserved than exists — 20 against a real 5 on the sample data. Only
+ * `po_settlement` applies the current formula.
+ */
+async function withLivePool(rows: RequestDispatch[]): Promise<RequestDispatch[]> {
+  if (rows.length === 0) return rows;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("po_settlement")
+    .select(
+      "po_id, qty_in_progress, qty_delivered, qty_returned, qty_cancelled, qty_outstanding, outstanding_value",
+    )
+    .in(
+      "po_id",
+      rows.map((row) => row.id),
+    );
+
+  if (error) {
+    throw new Error(`Could not load your requests: ${error.message}`);
+  }
+
+  const byId = new Map((data ?? []).map((row) => [row.po_id, row]));
+
+  return rows.map((row) => {
+    const live = byId.get(row.id);
+    if (!live) return row;
+
+    return {
+      ...row,
+      qty_in_progress: live.qty_in_progress ?? 0,
+      qty_delivered: live.qty_delivered ?? 0,
+      qty_returned: live.qty_returned ?? 0,
+      qty_cancelled: live.qty_cancelled ?? 0,
+      qty_outstanding: live.qty_outstanding ?? 0,
+      outstanding_value: live.outstanding_value,
+    };
+  });
 }
 
 /**
@@ -179,25 +231,37 @@ export type RequestValues = {
 export async function requestValues(): Promise<RequestValues> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("reserve_request_dispatch")
-    .select("status, qty_requested, qty_outstanding, unit_cost")
-    .in("status", ["approved", "pending"]);
+  // Held reads from po_settlement: it is the only view that takes released
+  // quantity off outstanding, and this figure is the dashboard's custody KPI.
+  // Asked is pending requests, which have no PO yet.
+  const [held, asked] = await Promise.all([
+    supabase
+      .from("po_settlement")
+      .select("qty_outstanding, unit_cost")
+      .eq("request_status", "approved"),
+    supabase
+      .from("reserve_request_dispatch")
+      .select("qty_requested, unit_cost")
+      .eq("status", "pending"),
+  ]);
 
-  if (error) throw new Error(`Could not value requests: ${error.message}`);
-
-  const rows = data ?? [];
+  if (held.error) {
+    throw new Error(`Could not value requests: ${held.error.message}`);
+  }
+  if (asked.error) {
+    throw new Error(`Could not value requests: ${asked.error.message}`);
+  }
 
   return {
     // Outstanding, not approved: units already dispatched have left the shelf
     // and are being settled through the wallet, so they are no longer held.
     held: rollValue(
-      rows.filter((row) => row.status === "approved"),
+      held.data ?? [],
       (row) => row.qty_outstanding ?? 0,
       (row) => row.unit_cost,
     ),
     asked: rollValue(
-      rows.filter((row) => row.status === "pending"),
+      asked.data ?? [],
       (row) => row.qty_requested ?? 0,
       (row) => row.unit_cost,
     ),

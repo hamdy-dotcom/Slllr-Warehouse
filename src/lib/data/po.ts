@@ -26,6 +26,11 @@ import {
 function toPo(row: Record<string, unknown>): Po | null {
   if (!row.po_id || !row.po_ref || !row.po_date) return null;
 
+  // A request cancelled before anyone approved it never became a PO: the view
+  // carries it with a null qty_approved, and there is nothing to split into
+  // dispatched, delivered, returned, outstanding and cancelled.
+  if (row.qty_approved === null || row.qty_approved === undefined) return null;
+
   const num = (value: unknown) => Number(value ?? 0);
 
   return {
@@ -41,7 +46,6 @@ function toPo(row: Record<string, unknown>): Po | null {
     unit_cost: row.unit_cost === null ? null : Number(row.unit_cost),
     qty_requested: num(row.qty_requested),
     qty_approved: num(row.qty_approved),
-    qty_dispatched: num(row.qty_dispatched),
     qty_outstanding: num(row.qty_outstanding),
     qty_delivered: num(row.qty_delivered),
     qty_returned: num(row.qty_returned),
@@ -54,7 +58,6 @@ function toPo(row: Record<string, unknown>): Po | null {
     returned_value: num(row.returned_value),
     in_progress_value: num(row.in_progress_value),
     cancelled_value: num(row.cancelled_value),
-    pct_dispatched: num(row.pct_dispatched),
     pct_in_progress: num(row.pct_in_progress),
     pct_delivered: num(row.pct_delivered),
     pct_returned: num(row.pct_returned),

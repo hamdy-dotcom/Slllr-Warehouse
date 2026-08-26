@@ -18,10 +18,17 @@ export type ReserveRequest = Tables["reserve_requests"]["Row"];
 /**
  * `reserve_request_dispatch`, normalised.
  *
- * The view is where the database and the screens agree on words: the column is
- * still `qty_released`, but everything reads it as `qty_dispatched` with
- * `qty_outstanding` and the two values worked out alongside. Every column
- * comes back nullable because Postgres cannot prove otherwise for a view.
+ * The view's `qty_dispatched` is a cumulative counter — everything that has
+ * ever left the warehouse against this request, including units since
+ * delivered or returned. It is deliberately absent here: "dispatched" on a
+ * screen means the live pool of units with customers, and a total that only
+ * ever grows would quietly contradict that everywhere it appeared.
+ *
+ * The live figures come from `po_settlement` and are stitched on in
+ * `listMyRequests`. They are null for a request that never became a PO.
+ *
+ * Every column comes back nullable because Postgres cannot prove otherwise
+ * for a view.
  */
 export type RequestDispatch = {
   id: string;
@@ -29,10 +36,13 @@ export type RequestDispatch = {
   requested_by: string;
   qty_requested: number;
   qty_approved: number | null;
-  qty_dispatched: number;
   qty_outstanding: number | null;
   outstanding_value: number | null;
-  dispatched_value: number | null;
+  /** Live pool: with customers now, awaiting delivery or return. */
+  qty_in_progress: number | null;
+  qty_delivered: number | null;
+  qty_returned: number | null;
+  qty_cancelled: number | null;
   status: RequestStatus;
   hold_until: string | null;
   note: string | null;

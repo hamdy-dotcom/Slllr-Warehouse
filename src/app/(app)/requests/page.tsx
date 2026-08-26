@@ -24,6 +24,22 @@ const TH =
   "px-[10px] pb-[10px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const TD = "border-t border-line px-[10px] py-[13px] align-middle";
 
+/**
+ * One part of the approved quantity. Null means the request never became a
+ * PO — pending or rejected — so there is nothing to split.
+ */
+function Split({ qty }: { qty: number | null }) {
+  return (
+    <td className={`${TD} tabular-nums`}>
+      {qty === null || qty === 0 ? (
+        <span className="text-ink-3">—</span>
+      ) : (
+        <b className="font-medium">{n(qty)}</b>
+      )}
+    </td>
+  );
+}
+
 export default async function RequestsPage() {
   const [t, tc, locale, requests] = await Promise.all([
     getTranslations("requests"),
@@ -106,8 +122,13 @@ export default async function RequestsPage() {
                   <th className={TH}>{tc("unitCost")}</th>
                   <th className={TH}>{t("requested")}</th>
                   <th className={TH}>{t("approved")}</th>
-                  <th className={TH}>{t("dispatched")}</th>
+                  <th className={TH} title={t("dispatchedHint")}>
+                    {t("dispatched")}
+                  </th>
+                  <th className={TH}>{t("delivered")}</th>
+                  <th className={TH}>{t("returned")}</th>
                   <th className={TH}>{t("outstanding")}</th>
+                  <th className={TH}>{t("cancelled")}</th>
                   <th className={TH}>{tc("value")}</th>
                   <th className={TH}>{t("holdUntil")}</th>
                   <th className={TH}>{t("sent")}</th>
@@ -127,11 +148,13 @@ export default async function RequestsPage() {
                     request.qty_approved !== null &&
                     request.qty_approved < request.qty_requested;
 
-                  // Approved is immutable once approved; dispatching moves
-                  // dispatched up and outstanding down. All four are shown so
-                  // no single figure has to carry two meanings. The words come
-                  // straight from reserve_request_dispatch.
-                  const dispatched = request.qty_dispatched;
+                  // Approved never shrinks, and the row splits it into where
+                  // those units are now:
+                  //   approved = dispatched + delivered + returned
+                  //            + outstanding + cancelled
+                  // "Dispatched" is the live pool — with customers, awaiting a
+                  // delivery or a return — not the cumulative counter the view
+                  // also carries.
                   const outstanding = request.qty_outstanding ?? 0;
 
                   return (
@@ -184,13 +207,9 @@ export default async function RequestsPage() {
                           </span>
                         )}
                       </td>
-                      <td className={`${TD} tabular-nums`}>
-                        {dispatched === 0 ? (
-                          <span className="text-ink-3">—</span>
-                        ) : (
-                          <b className="font-medium">{n(dispatched)}</b>
-                        )}
-                      </td>
+                      <Split qty={request.qty_in_progress} />
+                      <Split qty={request.qty_delivered} />
+                      <Split qty={request.qty_returned} />
 
                       <td className={`${TD} tabular-nums`}>
                         {request.qty_approved === null ? (
@@ -207,6 +226,8 @@ export default async function RequestsPage() {
                           </b>
                         )}
                       </td>
+
+                      <Split qty={request.qty_cancelled} />
 
                       <td
                         className={`${TD} tabular-nums ${

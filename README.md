@@ -254,6 +254,26 @@ A PO is one approved reserve request for one product. Nothing about a PO is
 stored — the `po_settlement` view derives every figure from the request, the
 movements booked against it, and the settlements booked against those.
 
+**Dispatched means the live pool.** Units that have left the warehouse to
+customers and are waiting to be delivered or returned — `qty_in_progress` in
+the view. A delivery and a return both take units out of it. The view also
+carries `qty_dispatched`, a cumulative counter of everything that ever left
+including units since settled: that one is internal and is never shown, and it
+is deliberately absent from the `Po` and `RequestDispatch` types so a screen
+cannot render it by accident.
+
+Every PO therefore reads as one identity:
+
+```
+approved = dispatched + delivered + returned + outstanding + cancelled
+```
+
+`reserve_request_dispatch` is one view behind on this: its `qty_outstanding`
+is still approved − dispatched and does not subtract `qty_cancelled`, so on a
+PO that has had quantity released it overstates what is reserved. Anything
+that needs outstanding reads `po_settlement` instead — the requests table and
+the dashboard's custody figure both do.
+
 **Each product has its own queue**, ordered by the PO's date — `queue_position`
 in the view. Which end of that queue an operation eats from is a rule per
 operation, not one FIFO rule everywhere:
