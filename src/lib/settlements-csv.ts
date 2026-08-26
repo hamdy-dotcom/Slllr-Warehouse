@@ -94,7 +94,12 @@ const KIND_ALIASES: Record<string, DailyKind> = {
   sold: "delivered",
   returned: "returned",
   return: "returned",
-  // Arabic, so a translated template reads back in.
+  // Arabic, so a hand-typed file reads back in. The stock lifecycle moved
+  // from the ص-ر-ف root to إرسال — مصروف now means money paid to a supplier —
+  // but the old spellings stay accepted so a file written before the change
+  // still uploads.
+  مرسل: "dispatched",
+  ارسال: "dispatched",
   مصروف: "dispatched",
   صرف: "dispatched",
   مسلم: "delivered",

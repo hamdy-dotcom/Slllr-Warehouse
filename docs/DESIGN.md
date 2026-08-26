@@ -117,6 +117,24 @@ in a muted grey, so the empty part of the track always means "still on the
 shelf" and nothing else. A percentage printed next to it counts only what
 left the shelf.
 
+In Arabic the stock lifecycle uses the تسليم family and the ص-ر-ف root is
+reserved for money:
+
+| English | Arabic |
+|---|---|
+| dispatched (the pool) | قيد التسليم |
+| awaiting dispatch | بانتظار التسليم |
+| part dispatched | قيد التسليم جزئيًا |
+| dispatch (the act) | إرسال / مُرسَل |
+| delivered | مُسلَّم |
+| returned | مُرتجع |
+| outstanding | المتبقي |
+| cancelled | الملغى |
+| paid to the supplier | المصروف |
+
+المصروف reads as money paid out, so it names only that. It appeared on the
+same page as the dispatched pool once and has to stay off it.
+
 ## Direction
 
 Arabic renders right to left: `<html dir="rtl" lang="ar">`, set from the
