@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -171,6 +171,13 @@ export type Database = {
             foreignKeyName: "reserve_requests_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "po_settlement"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "reserve_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "product_stock"
             referencedColumns: ["id"]
           },
@@ -250,6 +257,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "stock_movements"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "po_settlement"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "settlements_product_id_fkey"
@@ -342,6 +356,13 @@ export type Database = {
             foreignKeyName: "stock_movements_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "po_settlement"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "product_stock"
             referencedColumns: ["id"]
           },
@@ -351,6 +372,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "po_settlement"
+            referencedColumns: ["po_id"]
           },
           {
             foreignKeyName: "stock_movements_request_id_fkey"
@@ -449,6 +477,52 @@ export type Database = {
       }
     }
     Views: {
+      po_settlement: {
+        Row: {
+          delivered_value: number | null
+          image_url: string | null
+          in_progress_value: number | null
+          pct_dispatched: number | null
+          pct_settled: number | null
+          po_date: string | null
+          po_id: string | null
+          po_ref: string | null
+          po_status: string | null
+          po_value: number | null
+          product_id: string | null
+          product_name: string | null
+          qty_approved: number | null
+          qty_delivered: number | null
+          qty_dispatched: number | null
+          qty_in_progress: number | null
+          qty_outstanding: number | null
+          qty_requested: number | null
+          qty_returned: number | null
+          qty_settled: number | null
+          request_status: Database["public"]["Enums"]["request_status"] | null
+          returned_value: number | null
+          sku: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+          unit_cost: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_wallet"
+            referencedColumns: ["supplier_id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_stock: {
         Row: {
           created_at: string | null
@@ -551,6 +625,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserve_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "po_settlement"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "reserve_requests_product_id_fkey"

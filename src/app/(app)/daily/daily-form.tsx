@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
-import { simulateDaily } from "@/lib/daily";
+import { simulateDaily, type PoQueueLine } from "@/lib/daily";
 import { n } from "@/lib/format";
 import { money } from "@/lib/money";
 import {
@@ -22,7 +22,6 @@ import {
   settlementCsvTemplate,
   type DailyKind,
 } from "@/lib/settlements-csv";
-import type { InProgressLine, OutstandingLine } from "@/lib/data/wallet";
 import { recordDaily, type DailyResult } from "./actions";
 
 const TH =
@@ -43,14 +42,13 @@ const KIND_STYLE: Record<DailyKind, string> = {
  * on the next shows the delivery working against the dispatch.
  */
 export function DailyForm({
-  outstanding,
-  inProgress,
+  queue,
   defaultDate,
   supplierId,
   supplierName,
 }: {
-  outstanding: OutstandingLine[];
-  inProgress: InProgressLine[];
+  /** The POs with something left to move, oldest first within each product. */
+  queue: PoQueueLine[];
   defaultDate: string;
   supplierId: string;
   supplierName: string;
@@ -89,22 +87,30 @@ export function DailyForm({
   );
 
   const simulation = useMemo(
-    () =>
-      simulateDaily(
-        parsed.rows,
-        outstanding.map((line) => ({
-          sku: line.sku,
-          qty: line.outstanding_qty,
-          value: line.outstanding_value,
-        })),
-        inProgress.map((line) => ({
-          sku: line.sku,
-          qty: line.in_progress_qty,
-          value: line.in_progress_value,
-        })),
-      ),
-    [parsed.rows, outstanding, inProgress],
+    () => simulateDaily(parsed.rows, queue),
+    [parsed.rows, queue],
   );
+
+  // The two side panels are rolled up from the same queue the preview walks.
+  const pools = useMemo(() => {
+    const roll = (of: (line: PoQueueLine) => number) => {
+      const bySku = new Map<string, { sku: string; qty: number; value: number }>();
+      for (const line of queue) {
+        const qty = of(line);
+        if (qty <= 0) continue;
+        const entry = bySku.get(line.sku) ?? { sku: line.sku, qty: 0, value: 0 };
+        entry.qty += qty;
+        entry.value += (line.unit_cost ?? 0) * qty;
+        bySku.set(line.sku, entry);
+      }
+      return [...bySku.values()].sort((a, b) => a.sku.localeCompare(b.sku));
+    };
+
+    return {
+      outstanding: roll((line) => line.outstanding),
+      inProgress: roll((line) => line.in_progress),
+    };
+  }, [queue]);
 
   function commit() {
     setError(null);
@@ -202,6 +208,7 @@ export function DailyForm({
       <Card className="min-w-0">
         <SectionTitle>{t("numbers")}</SectionTitle>
         <Muted className="mb-4">{t("numbersLede")}</Muted>
+        <Muted className="mb-4">{t("queueNote")}</Muted>
 
         <Field label={t("dateLabel")} htmlFor="occurred_on">
           <Input
@@ -283,6 +290,7 @@ export function DailyForm({
                     <th className={TH}>{tc("kind")}</th>
                     <th className={TH}>{tc("qty")}</th>
                     <th className={TH}>{t("drawsFrom")}</th>
+                    <th className={TH}>{t("poQueueCol")}</th>
                     <th className={TH}>{t("inProgressCol")}</th>
                   </tr>
                 </thead>
@@ -334,6 +342,30 @@ export function DailyForm({
                         >
                           {n(entry.after)}
                         </b>
+                      </td>
+
+                      {/* Which POs the RPC will book this row against, in the
+                          order it will walk them. */}
+                      <td className={`${TD} text-meta`}>
+                        {entry.hits.length === 0 ? (
+                          <span className="text-ink-3">{t("poNone")}</span>
+                        ) : (
+                          <div className="flex flex-col gap-[2px]">
+                            {entry.hits.map((hit, position) => (
+                              <span key={hit.po_ref}>
+                                <span className="text-ink-3">
+                                  {position + 1}.
+                                </span>{" "}
+                                <span className="latin font-mono">
+                                  {hit.po_ref}
+                                </span>{" "}
+                                <b className="font-medium tabular-nums">
+                                  {n(hit.qty)}
+                                </b>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
 
                       <td className={`${TD} tabular-nums`}>
@@ -423,22 +455,14 @@ export function DailyForm({
           title={t("outstandingNow")}
           empty={t("outstandingEmpty")}
           unit={t("outstandingUnit")}
-          lines={outstanding.map((line) => ({
-            sku: line.sku,
-            qty: line.outstanding_qty,
-            value: line.outstanding_value,
-          }))}
+          lines={pools.outstanding}
         />
 
         <Pool
           title={t("inProgressNow")}
           empty={t("inProgressEmpty")}
           unit={t("inProgressUnit")}
-          lines={inProgress.map((line) => ({
-            sku: line.sku,
-            qty: line.in_progress_qty,
-            value: line.in_progress_value,
-          }))}
+          lines={pools.inProgress}
         />
       </div>
     </div>

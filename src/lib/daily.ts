@@ -5,31 +5,54 @@
  * to decide what may be written, so what the screen promises and what the
  * action allows cannot drift apart.
  *
- * Two pools move. A dispatch takes from **outstanding** — approved but not yet
- * sent — and puts the units into **in progress**. A delivery or a return takes
- * from in progress. Rows are walked in the order they were pasted, so a SKU
- * dispatched on one line and delivered on the next sees its own dispatch.
+ * It does not allocate anything. `record_stock_movements` and
+ * `record_settlements` own that, and each walks **one product's queue of POs,
+ * oldest PO first**. This mirrors that queue so the preview can say which POs
+ * a row will hit — but the numbers it draws are a forecast of the RPC's work,
+ * never an instruction to it.
+ *
+ * Two pools move. A dispatch takes from a PO's **outstanding** — approved but
+ * not yet sent — and puts those units into that same PO's **in progress**. A
+ * delivery or a return takes from in progress. Rows are walked in the order
+ * they were pasted, so a SKU dispatched on one line and delivered on the next
+ * sees its own dispatch.
  */
 import type { SettlementCsvRow } from "@/lib/settlements-csv";
 
-export type PoolLine = {
+/**
+ * One PO in a product's queue.
+ *
+ * A PO is one approved request for one product. Each product has its own
+ * queue, so `po_date` orders POs against their siblings on the same SKU and
+ * means nothing across SKUs.
+ */
+export type PoQueueLine = {
+  po_id: string;
+  po_ref: string;
+  /** ISO timestamp. Orders this PO within its own product's queue. */
+  po_date: string;
   sku: string;
-  qty: number;
-  /** Total value of the pool, used to price a slice of it. */
-  value: number;
+  outstanding: number;
+  in_progress: number;
+  unit_cost: number | null;
 };
+
+/** A slice of one row, taken from one PO. */
+export type PoHit = { po_ref: string; qty: number };
 
 export type SimRow = {
   row: SettlementCsvRow;
-  /** The pool this row draws from, before and after. */
+  /** The pool this row draws from, before and after, summed over the queue. */
   pool: "outstanding" | "inProgress";
   before: number;
   after: number;
   /** In progress before and after, for every kind — a dispatch adds to it. */
   progressBefore: number;
   progressAfter: number;
-  /** What the row is worth at the pool's average cost, or null when unpriced. */
+  /** What the row is worth at each PO's own cost, or null when one is unpriced. */
   value: number | null;
+  /** Which POs the row draws from, oldest first — the order the RPC will use. */
+  hits: PoHit[];
   /**
    * Why the row does not fit, named rather than written out. The simulation
    * runs on the server and in the browser and has to read in either language,
@@ -51,87 +74,96 @@ export type Simulation = {
   returnedValue: number;
 };
 
-function unitCostOf(qty: number, value: number): number | null {
-  if (qty <= 0) return null;
-  return value / qty;
+type Entry = {
+  po_ref: string;
+  outstanding: number;
+  in_progress: number;
+  unit_cost: number | null;
+};
+
+/** Oldest first, per product — the order both RPCs allocate in. */
+function queueBySku(queue: PoQueueLine[]): Map<string, Entry[]> {
+  const bySku = new Map<string, Entry[]>();
+
+  for (const line of [...queue].sort((a, b) =>
+    a.po_date < b.po_date ? -1 : a.po_date > b.po_date ? 1 : 0,
+  )) {
+    const list = bySku.get(line.sku) ?? [];
+    list.push({
+      po_ref: line.po_ref,
+      outstanding: line.outstanding,
+      in_progress: line.in_progress,
+      unit_cost: line.unit_cost,
+    });
+    bySku.set(line.sku, list);
+  }
+
+  return bySku;
+}
+
+const sum = (entries: Entry[], of: (entry: Entry) => number) =>
+  entries.reduce((total, entry) => total + of(entry), 0);
+
+/**
+ * Walks a product's queue oldest first, taking what it can from each PO.
+ *
+ * Only called once the total has been checked, so it always places the whole
+ * quantity. Returns null for the value if any PO it touched carries no cost —
+ * a partial total would read as a real amount and understate the row.
+ */
+function draw(
+  entries: Entry[],
+  qty: number,
+  from: "outstanding" | "in_progress",
+  onTake: (entry: Entry, take: number) => void,
+): { hits: PoHit[]; value: number | null } {
+  const hits: PoHit[] = [];
+  let left = qty;
+  let value: number | null = 0;
+
+  for (const entry of entries) {
+    if (left <= 0) break;
+    const take = Math.min(left, entry[from]);
+    if (take <= 0) continue;
+
+    onTake(entry, take);
+    hits.push({ po_ref: entry.po_ref, qty: take });
+    left -= take;
+
+    if (entry.unit_cost === null) value = null;
+    else if (value !== null) value += entry.unit_cost * take;
+  }
+
+  return { hits, value };
 }
 
 export function simulateDaily(
   rows: SettlementCsvRow[],
-  outstanding: PoolLine[],
-  inProgress: PoolLine[],
+  queue: PoQueueLine[],
 ): Simulation {
-  const out = new Map(outstanding.map((line) => [line.sku, line.qty]));
-  const outValue = new Map(outstanding.map((line) => [line.sku, line.value]));
-  const prog = new Map(inProgress.map((line) => [line.sku, line.qty]));
-  const progValue = new Map(inProgress.map((line) => [line.sku, line.value]));
-
-  const known = new Set([...out.keys(), ...prog.keys()]);
+  const bySku = queueBySku(queue);
 
   let dispatchedValue = 0;
   let deliveredValue = 0;
   let returnedValue = 0;
 
   const simulated = rows.map<SimRow>((row) => {
-    const progressBefore = prog.get(row.sku) ?? 0;
-
-    if (row.kind === "dispatched") {
-      const before = out.get(row.sku) ?? 0;
-      const after = before - row.qty;
-      const each = unitCostOf(before, outValue.get(row.sku) ?? 0);
-      const value = each === null ? null : each * row.qty;
-
-      let problem: SimProblem | null = null;
-      if (!known.has(row.sku)) problem = { key: "skuNotFound" };
-      else if (before === 0) problem = { key: "nothingOutstanding" };
-      else if (after < 0) {
-        problem = {
-          key: "onlyOutstanding",
-          params: {
-            available: before.toLocaleString("en-US"),
-            wanted: row.qty.toLocaleString("en-US"),
-          },
-        };
-      }
-
-      if (!problem) {
-        out.set(row.sku, after);
-        outValue.set(
-          row.sku,
-          (outValue.get(row.sku) ?? 0) - (value ?? 0),
-        );
-        // Dispatched units land in progress at the cost they carried.
-        prog.set(row.sku, progressBefore + row.qty);
-        progValue.set(
-          row.sku,
-          (progValue.get(row.sku) ?? 0) + (value ?? 0),
-        );
-        dispatchedValue += value ?? 0;
-      }
-
-      return {
-        row,
-        pool: "outstanding",
-        before,
-        after,
-        progressBefore,
-        progressAfter: problem ? progressBefore : progressBefore + row.qty,
-        value,
-        problem,
-      };
-    }
-
-    const before = progressBefore;
+    const entries = bySku.get(row.sku) ?? [];
+    const progressBefore = sum(entries, (entry) => entry.in_progress);
+    const dispatch = row.kind === "dispatched";
+    const pool = dispatch ? ("outstanding" as const) : ("inProgress" as const);
+    const before = dispatch
+      ? sum(entries, (entry) => entry.outstanding)
+      : progressBefore;
     const after = before - row.qty;
-    const each = unitCostOf(before, progValue.get(row.sku) ?? 0);
-    const value = each === null ? null : each * row.qty;
 
     let problem: SimProblem | null = null;
-    if (!known.has(row.sku)) problem = { key: "skuNotFound" };
-    else if (before === 0) problem = { key: "nothingInProgress" };
-    else if (after < 0) {
+    if (!bySku.has(row.sku)) problem = { key: "skuNotFound" };
+    else if (before === 0) {
+      problem = { key: dispatch ? "nothingOutstanding" : "nothingInProgress" };
+    } else if (after < 0) {
       problem = {
-        key: "onlyInProgress",
+        key: dispatch ? "onlyOutstanding" : "onlyInProgress",
         params: {
           available: before.toLocaleString("en-US"),
           wanted: row.qty.toLocaleString("en-US"),
@@ -139,22 +171,44 @@ export function simulateDaily(
       };
     }
 
-    if (!problem) {
-      prog.set(row.sku, after);
-      progValue.set(row.sku, (progValue.get(row.sku) ?? 0) - (value ?? 0));
-      if (row.kind === "delivered") deliveredValue += value ?? 0;
-      else returnedValue += value ?? 0;
+    if (problem) {
+      return {
+        row,
+        pool,
+        before,
+        after,
+        progressBefore,
+        progressAfter: progressBefore,
+        value: null,
+        hits: [],
+        problem,
+      };
     }
+
+    const { hits, value } = dispatch
+      ? draw(entries, row.qty, "outstanding", (entry, take) => {
+          entry.outstanding -= take;
+          // Dispatched units stay on their own PO, now in progress.
+          entry.in_progress += take;
+        })
+      : draw(entries, row.qty, "in_progress", (entry, take) => {
+          entry.in_progress -= take;
+        });
+
+    if (dispatch) dispatchedValue += value ?? 0;
+    else if (row.kind === "delivered") deliveredValue += value ?? 0;
+    else returnedValue += value ?? 0;
 
     return {
       row,
-      pool: "inProgress",
+      pool,
       before,
       after,
       progressBefore,
-      progressAfter: problem ? progressBefore : after,
+      progressAfter: dispatch ? progressBefore + row.qty : progressBefore - row.qty,
       value,
-      problem,
+      hits,
+      problem: null,
     };
   });
 
@@ -165,28 +219,4 @@ export function simulateDaily(
     deliveredValue,
     returnedValue,
   };
-}
-
-/**
- * Splits a dispatch across approved requests, oldest first.
- *
- * `record_stock_movements` books a dispatch against exactly one request, so a
- * row bigger than the oldest one becomes several movement rows.
- */
-export function allocateDispatch(
-  qty: number,
-  requests: { id: string; outstanding: number }[],
-): { id: string; qty: number }[] {
-  const slices: { id: string; qty: number }[] = [];
-  let left = qty;
-
-  for (const request of requests) {
-    if (left <= 0) break;
-    const take = Math.min(left, request.outstanding);
-    if (take <= 0) continue;
-    slices.push({ id: request.id, qty: take });
-    left -= take;
-  }
-
-  return left > 0 ? [] : slices;
 }

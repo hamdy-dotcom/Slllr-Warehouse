@@ -368,7 +368,11 @@
     "askMore": "{count, plural, zero {كل الصفوف مناسبة.} one {صف واحد يطلب أكثر مما هو قيد التنفيذ.} two {صفان يطلبان أكثر مما هو قيد التنفيذ.} few {# صفوف تطلب أكثر مما هو قيد التنفيذ.} many {# صفًا يطلب أكثر مما هو قيد التنفيذ.} other {# صف يطلب أكثر مما هو قيد التنفيذ.}} لا يُرسل شيء حتى يناسب كل صف.",
     "nothingInProgress": "لا شيء قيد التنفيذ",
     "recordedRows": "{count, plural, zero {لم تُسجَّل صفوف} one {سُجّل صف واحد} two {سُجّل صفان} few {سُجّلت # صفوف} many {سُجّل # صفًا} other {سُجّل # صف}}",
-    "templateName": "اليومي-{date}.csv"
+    "templateName": "اليومي-{date}.csv",
+    "poQueueCol": "أوامر الشراء التي يسحب منها",
+    "poHit": "{ref} · {qty}",
+    "poNone": "—",
+    "queueNote": "لكل منتج طابوره الخاص. يسحب الصف من أقدم أمر شراء لهذا المنتج أولًا — لا من أقدم أمر شراء عمومًا."
   },
   "csv": {
     "sku": "رمز المنتج",
@@ -422,7 +426,6 @@
     "noAnswer": "لا رد من الرف",
     "notRecordedFix": "لم يُسجَّل — صحّح الصفوف غير المناسبة وأعد الإرسال",
     "notRecordedAbove": "لم يُسجَّل — صحّح الصفوف أعلاه وأعد الإرسال",
-    "noApprovedLeft": "لا طلب معتمد متبقٍ للصرف منه",
     "skuNotFound": "رمز المنتج غير موجود",
     "nothingInProgressSku": "لا شيء قيد التنفيذ لرمز المنتج هذا",
     "onlyInProgress": "قيد التنفيذ {available} وحدة فقط، لا {wanted}",
@@ -461,8 +464,10 @@
     "costUpdated": "حُدّثت التكلفة",
     "costNotChanged": "لم تتغيّر التكلفة",
     "noAnswer": "لم يرد الرف. حاول مرة أخرى.",
-    "dispatchedUnits": "صُرفت {count} وحدة",
-    "dispatchedAcross": "صُرفت {count} وحدة عبر {requests} طلبات"
+    "qtyMovedAcross": "{before} ← {after}، عبر {count, plural, zero {لا أوامر شراء} one {أمر شراء واحد} two {أمري شراء} few {# أوامر شراء} many {# أمر شراء} other {# أمر شراء}}",
+    "settledUnits": "{kind} {count} وحدة، {value}",
+    "wordDelivered": "سُلّم",
+    "wordReturned": "أُرجع"
   },
   "sim": {
     "skuNotFound": "رمز المنتج غير موجود",
@@ -470,5 +475,41 @@
     "onlyOutstanding": "المتبقي {available} فقط، لا {wanted}",
     "nothingInProgress": "لا شيء قيد التنفيذ لرمز المنتج هذا",
     "onlyInProgress": "قيد التنفيذ {available} فقط، لا {wanted}"
+  },
+  "po": {
+    "title": "تسويات أوامر الشراء",
+    "lede": "أمر الشراء هو طلب معتمد واحد لمنتج واحد. مرتَّبة من الأقدم داخل كل منتج — وهذا ترتيب تسويتها، لا مجرد فرز.",
+    "queueNote": "لكل منتج طابوره الخاص. التسليم يسحب من أقدم أمر شراء لهذا المنتج، لا من أقدم أمر شراء عمومًا.",
+    "empty": "لا أوامر شراء لعرضها بعد. يصبح طلب الحجز أمر شراء بعد اعتماد المورّد له.",
+    "noMatch": "لا أوامر شراء تطابق عوامل التصفية هذه.",
+    "openValue": "قيمة أوامر الشراء المفتوحة",
+    "inProgressValue": "قيد التنفيذ",
+    "settledValue": "المُسوّى",
+    "countLabel": "{count, plural, zero {لا أوامر شراء} one {أمر شراء واحد} two {أمرا شراء} few {# أوامر شراء} many {# أمر شراء} other {# أمر شراء}}",
+    "posInQueue": "{count, plural, zero {لا أوامر شراء في هذا الطابور} one {أمر شراء واحد في هذا الطابور} two {أمرا شراء في هذا الطابور} few {# أوامر شراء في هذا الطابور} many {# أمر شراء في هذا الطابور} other {# أمر شراء في هذا الطابور}}",
+    "nextToDispatch": "التالي للصرف",
+    "nextToSettle": "التالي للتسوية",
+    "queuePosition": "#{position} في طابور هذا المنتج",
+    "dispatched": "المصروف",
+    "settled": "المُسوّى",
+    "ofApproved": "{done} من {total} معتمدة",
+    "settledBreakdown": "{delivered} مُسلَّم · {returned} مُرتجع · {inProgress} قيد التنفيذ",
+    "perUnit": "{cost} للوحدة",
+    "notPriced": "غير مسعّر",
+    "statusAwaiting": "بانتظار الصرف",
+    "statusPartDispatched": "مصروف جزئيًا",
+    "statusInProgress": "قيد التنفيذ",
+    "statusSettled": "مُسوّى",
+    "allStatuses": "كل الحالات",
+    "allSuppliers": "كل الموردين",
+    "filterStatus": "الحالة",
+    "filterSupplier": "المورّد",
+    "history": "سجل التسوية",
+    "historyEmpty": "لم يُسلَّم أو يُرجَع شيء على أمر الشراء هذا بعد.",
+    "showHistory": "اعرض سجل تسوية {ref}",
+    "hideHistory": "أخفِ سجل تسوية {ref}",
+    "kindDelivered": "تسليم",
+    "kindReturned": "إرجاع",
+    "posInQueueFiltered": "{shown} من {count, plural, zero {لا أوامر شراء} one {أمر شراء واحد} two {أمري شراء} few {# أوامر شراء} many {# أمر شراء} other {# أمر شراء}} في هذا الطابور"
   }
 }

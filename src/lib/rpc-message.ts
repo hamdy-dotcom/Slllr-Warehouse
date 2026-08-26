@@ -2,6 +2,8 @@ import "server-only";
 
 import { getTranslations } from "next-intl/server";
 
+import { money } from "@/lib/money";
+
 /**
  * The per-row `message` a stock RPC hands back.
  *
@@ -17,16 +19,23 @@ import { getTranslations } from "next-intl/server";
  *                            `Cannot go below the 76 units still reserved…`
  *   record_stock_movements   `SKU not found`
  *                            `Would leave 0 units, below the 76 reserved…`
- *                            `A release to Sllr needs a request_id`
+ *                            `1637 → 1137, across 2 POs`
  *   record_settlements       `SKU not found`
  *                            `Only 3 units are in progress for this SKU`
+ *                            `delivered 100 units, SAR 25925.00`
+ *
+ * Amounts are re-rendered through `money()` rather than passed through, so a
+ * figure the RPC wrote as `SAR 25925.00` reads the way every other amount on
+ * the screen does.
  */
 export type RpcTranslator = (message: string) => string;
+
+type Params = Record<string, string | number>;
 
 const PATTERNS: {
   test: RegExp;
   key: string;
-  params?: (match: RegExpMatchArray) => Record<string, string>;
+  params?: (match: RegExpMatchArray, t: (key: string) => string) => Params;
 }[] = [
   {
     test: /^SKU not found, or it belongs to another supplier$/,
@@ -34,9 +43,23 @@ const PATTERNS: {
   },
   { test: /^SKU not found$/, key: "skuNotFound" },
   {
+    test: /^([\d,]+) → ([\d,]+), across (\d+) POs?$/,
+    key: "qtyMovedAcross",
+    params: (m) => ({ before: m[1], after: m[2], count: Number(m[3]) }),
+  },
+  {
     test: /^([\d,]+) → ([\d,]+)$/,
     key: "qtyMoved",
     params: (m) => ({ before: m[1], after: m[2] }),
+  },
+  {
+    test: /^(delivered|returned) ([\d,]+) units?, SAR ([\d,.]+)$/,
+    key: "settledUnits",
+    params: (m, t) => ({
+      kind: t(m[1] === "delivered" ? "wordDelivered" : "wordReturned"),
+      count: m[2],
+      value: money(Number(m[3].replace(/,/g, ""))),
+    }),
   },
   {
     test: /^Cannot go below the ([\d,]+) units still reserved for Sllr$/,
@@ -63,7 +86,7 @@ export async function rpcTranslator(): Promise<RpcTranslator> {
   return (message: string) => {
     for (const pattern of PATTERNS) {
       const match = message.match(pattern.test);
-      if (match) return t(pattern.key, pattern.params?.(match) ?? {});
+      if (match) return t(pattern.key, pattern.params?.(match, t) ?? {});
     }
     return message;
   };

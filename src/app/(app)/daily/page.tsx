@@ -4,11 +4,8 @@ import { getTranslations } from "next-intl/server";
 
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { requireProfile } from "@/lib/auth";
-import {
-  inProgressBySupplier,
-  listSuppliers,
-  outstandingBySupplier,
-} from "@/lib/data/wallet";
+import { listSuppliers } from "@/lib/data/wallet";
+import { poQueueBySupplier } from "@/lib/data/po";
 import { SupplierPicker } from "@/app/(app)/wallet/supplier-picker";
 import { DailyForm } from "./daily-form";
 
@@ -44,12 +41,9 @@ export default async function DailyPage({
 
   const supplier = suppliers.find((row) => row.id === selectedId) ?? null;
 
-  const [outstanding, inProgress] = selectedId
-    ? await Promise.all([
-        outstandingBySupplier(selectedId),
-        inProgressBySupplier(selectedId),
-      ])
-    : [[], []];
+  // One read of the same queue both RPCs allocate against, so the preview and
+  // the two side panels cannot disagree with each other.
+  const queue = selectedId ? await poQueueBySupplier(selectedId) : [];
 
   return (
     <>
@@ -70,8 +64,7 @@ export default async function DailyPage({
         </Card>
       ) : (
         <DailyForm
-          outstanding={outstanding}
-          inProgress={inProgress}
+          queue={queue}
           defaultDate={yesterday()}
           supplierId={supplier.id}
           supplierName={supplier.name}

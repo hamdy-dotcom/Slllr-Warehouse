@@ -12,6 +12,8 @@ import {
 } from "@/lib/data/wallet";
 import { formatDate, n } from "@/lib/format";
 import { money } from "@/lib/money";
+import { isPoStatus } from "@/lib/po";
+import { PoSection } from "./po-section";
 import { RecordPaymentButton } from "./payment-dialog";
 import { RecordSettlementsButton } from "./settle-dialog";
 import { SupplierPicker } from "./supplier-picker";
@@ -34,7 +36,11 @@ const KIND_STYLE = {
 export default async function WalletPage({
   searchParams,
 }: {
-  searchParams: Promise<{ supplier?: string }>;
+  searchParams: Promise<{
+    supplier?: string;
+    po_status?: string;
+    po_supplier?: string;
+  }>;
 }) {
   const profile = await requireProfile();
   const params = await searchParams;
@@ -269,6 +275,16 @@ export default async function WalletPage({
           </Card>
         </>
       )}
+
+      {/* Outside the wallet branch on purpose: a supplier with nothing
+          settled yet still has POs worth reading. */}
+      <PoSection
+        profile={profile}
+        filter={{
+          status: isPoStatus(params.po_status) ? params.po_status : undefined,
+          supplierId: params.po_supplier || undefined,
+        }}
+      />
     </>
   );
 }

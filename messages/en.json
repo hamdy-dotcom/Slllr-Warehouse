@@ -368,7 +368,11 @@
     "askMore": "{count, plural, one {# row asks for more than is in progress.} other {# rows ask for more than is in progress.}} Nothing is sent until every row fits.",
     "nothingInProgress": "nothing in progress",
     "recordedRows": "Recorded {count, plural, one {# row} other {# rows}}",
-    "templateName": "daily-{date}.csv"
+    "templateName": "daily-{date}.csv",
+    "poQueueCol": "POs it draws from",
+    "poHit": "{ref} · {qty}",
+    "poNone": "—",
+    "queueNote": "Each product has its own queue. A row draws from that product’s oldest PO first — never the oldest PO overall."
   },
   "csv": {
     "sku": "sku",
@@ -422,7 +426,6 @@
     "noAnswer": "No answer from the shelf",
     "notRecordedFix": "Not recorded — fix the rows that do not fit and send again",
     "notRecordedAbove": "Not recorded — fix the rows above and send again",
-    "noApprovedLeft": "No approved request left to dispatch against",
     "skuNotFound": "SKU not found",
     "nothingInProgressSku": "Nothing is in progress for this SKU",
     "onlyInProgress": "Only {available} units are in progress, not {wanted}",
@@ -461,8 +464,10 @@
     "costUpdated": "cost updated",
     "costNotChanged": "cost not changed",
     "noAnswer": "The shelf did not answer. Try again.",
-    "dispatchedUnits": "dispatched {count} units",
-    "dispatchedAcross": "dispatched {count} units across {requests} requests"
+    "qtyMovedAcross": "{before} → {after}, across {count, plural, one {# PO} other {# POs}}",
+    "settledUnits": "{kind} {count} units, {value}",
+    "wordDelivered": "Delivered",
+    "wordReturned": "Returned"
   },
   "sim": {
     "skuNotFound": "SKU not found",
@@ -470,5 +475,41 @@
     "onlyOutstanding": "Only {available} outstanding, not {wanted}",
     "nothingInProgress": "Nothing in progress for this SKU",
     "onlyInProgress": "Only {available} in progress, not {wanted}"
+  },
+  "po": {
+    "title": "PO settlements",
+    "lede": "A PO is one approved request for one product. Listed oldest first within each product — that is the order they settle in, not a sort.",
+    "queueNote": "Every product has its own queue. A delivery draws from the oldest PO for that product, never the oldest PO overall.",
+    "empty": "No POs to show yet. A reserve request becomes a PO once the supplier approves it.",
+    "noMatch": "No POs match those filters.",
+    "openValue": "Open PO value",
+    "inProgressValue": "In progress",
+    "settledValue": "Settled",
+    "countLabel": "{count, plural, one {# PO} other {# POs}}",
+    "posInQueue": "{count, plural, one {# PO in this queue} other {# POs in this queue}}",
+    "nextToDispatch": "next to dispatch",
+    "nextToSettle": "next to settle",
+    "queuePosition": "#{position} in this product’s queue",
+    "dispatched": "Dispatched",
+    "settled": "Settled",
+    "ofApproved": "{done} of {total} approved",
+    "settledBreakdown": "{delivered} delivered · {returned} returned · {inProgress} in progress",
+    "perUnit": "{cost} per unit",
+    "notPriced": "Not priced",
+    "statusAwaiting": "awaiting dispatch",
+    "statusPartDispatched": "part dispatched",
+    "statusInProgress": "in progress",
+    "statusSettled": "settled",
+    "allStatuses": "All statuses",
+    "allSuppliers": "All suppliers",
+    "filterStatus": "Status",
+    "filterSupplier": "Supplier",
+    "history": "Settlement history",
+    "historyEmpty": "Nothing delivered or returned against this PO yet.",
+    "showHistory": "Show settlement history for {ref}",
+    "hideHistory": "Hide settlement history for {ref}",
+    "kindDelivered": "Delivered",
+    "kindReturned": "Returned",
+    "posInQueueFiltered": "{shown} of {count, plural, one {# PO} other {# POs}} in this queue"
   }
 }

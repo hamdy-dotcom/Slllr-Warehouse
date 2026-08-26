@@ -248,6 +248,36 @@ originally approved. On a product with 60 approved and 50 dispatched, 30 is
 accepted and 5 is refused with "Cannot go below the 10 units still reserved
 for Sllr".
 
+### Purchase orders
+
+A PO is one approved reserve request for one product. Nothing about a PO is
+stored — the `po_settlement` view derives every figure from the request, the
+movements booked against it, and the settlements booked against those.
+
+**Each product has its own queue**, ordered by the PO's date. Both
+`record_stock_movements` and `record_settlements` walk that queue oldest PO
+first, so the oldest PO *for that product* dispatches and settles first — the
+oldest PO overall has nothing to do with it. The wallet groups POs by product
+for exactly that reason: a flat list sorted by date would imply a single queue
+that does not exist.
+
+Allocation lives in the database and nowhere else. A dispatch is sent as one
+row with no `request_id`; the RPC spreads it across as many POs as it takes
+and writes one movement per PO touched, checking the whole quantity fits
+before writing anything. Passing a `request_id` targets one specific PO, which
+the app never does.
+
+The daily update still simulates a paste before sending it, but the simulation
+mirrors that queue rather than deciding anything: it walks each product's POs
+oldest first so the preview can name the POs a row will hit, and refuses a
+paste it cannot place. What it draws is a forecast of the RPC's work, never an
+instruction to it.
+
+A PO's settlement history has no column of its own. A settlement points at the
+release movement it consumed, and that movement carries the `request_id` of
+the PO it was dispatched against, so the path is
+`settlements → stock_movements → request_id`.
+
 ### Who can see what
 
 Every supplier-scoped table and view is scoped in the database, not just in
