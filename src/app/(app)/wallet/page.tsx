@@ -12,7 +12,7 @@ import {
 } from "@/lib/data/wallet";
 import { formatDate, n } from "@/lib/format";
 import { money } from "@/lib/money";
-import { isPoStatus } from "@/lib/po";
+import { DEFAULT_SORT, isPoSort, isPoStatus } from "@/lib/po";
 import { PoSection } from "./po-section";
 import { RecordPaymentButton } from "./payment-dialog";
 import { RecordSettlementsButton } from "./settle-dialog";
@@ -40,6 +40,9 @@ export default async function WalletPage({
     supplier?: string;
     po_status?: string;
     po_supplier?: string;
+    po_q?: string;
+    po_sort?: string;
+    po_dir?: string;
   }>;
 }) {
   const profile = await requireProfile();
@@ -283,7 +286,10 @@ export default async function WalletPage({
         filter={{
           status: isPoStatus(params.po_status) ? params.po_status : undefined,
           supplierId: params.po_supplier || undefined,
+          q: params.po_q || undefined,
         }}
+        sort={isPoSort(params.po_sort) ? params.po_sort : DEFAULT_SORT}
+        dir={params.po_dir === "desc" ? "desc" : "asc"}
       />
     </>
   );

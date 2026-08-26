@@ -6,10 +6,17 @@
  * action allows cannot drift apart.
  *
  * It does not allocate anything. `record_stock_movements` and
- * `record_settlements` own that, and each walks **one product's queue of POs,
- * oldest PO first**. This mirrors that queue so the preview can say which POs
- * a row will hit — but the numbers it draws are a forecast of the RPC's work,
- * never an instruction to it.
+ * `record_settlements` own that, and each walks **one product's queue of
+ * POs** — but not always from the same end:
+ *
+ *   dispatch   oldest → newest
+ *   delivered  oldest → newest
+ *   returned   newest → oldest
+ *
+ * A return going the other way is the point, not an accident: the units most
+ * recently committed are the ones handed back first. This mirrors those rules
+ * so the preview can say which POs a row will hit — but the numbers it draws
+ * are a forecast of the RPC's work, never an instruction to it.
  *
  * Two pools move. A dispatch takes from a PO's **outstanding** — approved but
  * not yet sent — and puts those units into that same PO's **in progress**. A
@@ -81,7 +88,7 @@ type Entry = {
   unit_cost: number | null;
 };
 
-/** Oldest first, per product — the order both RPCs allocate in. */
+/** Oldest first, per product. A return walks the same list backwards. */
 function queueBySku(queue: PoQueueLine[]): Map<string, Entry[]> {
   const bySku = new Map<string, Entry[]>();
 
@@ -105,11 +112,13 @@ const sum = (entries: Entry[], of: (entry: Entry) => number) =>
   entries.reduce((total, entry) => total + of(entry), 0);
 
 /**
- * Walks a product's queue oldest first, taking what it can from each PO.
+ * Walks a product's queue, taking what it can from each PO in turn.
  *
- * Only called once the total has been checked, so it always places the whole
- * quantity. Returns null for the value if any PO it touched carries no cost —
- * a partial total would read as a real amount and understate the row.
+ * `entries` arrives already in the order the RPC will use, so this does not
+ * decide the direction. Only called once the total has been checked, so it
+ * always places the whole quantity. Returns null for the value if any PO it
+ * touched carries no cost — a partial total would read as a real amount and
+ * understate the row.
  */
 function draw(
   entries: Entry[],
@@ -185,13 +194,17 @@ export function simulateDaily(
       };
     }
 
+    // A return hands back the newest commitment first, so it walks the queue
+    // from the other end. Dispatch and delivery both start at the oldest.
+    const walk = row.kind === "returned" ? [...entries].reverse() : entries;
+
     const { hits, value } = dispatch
-      ? draw(entries, row.qty, "outstanding", (entry, take) => {
+      ? draw(walk, row.qty, "outstanding", (entry, take) => {
           entry.outstanding -= take;
           // Dispatched units stay on their own PO, now in progress.
           entry.in_progress += take;
         })
-      : draw(entries, row.qty, "in_progress", (entry, take) => {
+      : draw(walk, row.qty, "in_progress", (entry, take) => {
           entry.in_progress -= take;
         });
 

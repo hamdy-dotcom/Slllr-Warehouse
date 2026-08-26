@@ -121,6 +121,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_cancelled: number
           qty_released: number
           qty_requested: number
           requested_by: string
@@ -137,6 +138,7 @@ export type Database = {
           note?: string | null
           product_id: string
           qty_approved?: number | null
+          qty_cancelled?: number
           qty_released?: number
           qty_requested: number
           requested_by: string
@@ -153,6 +155,7 @@ export type Database = {
           note?: string | null
           product_id?: string
           qty_approved?: number | null
+          qty_cancelled?: number
           qty_released?: number
           qty_requested?: number
           requested_by?: string
@@ -479,11 +482,15 @@ export type Database = {
     Views: {
       po_settlement: {
         Row: {
+          cancelled_value: number | null
           delivered_value: number | null
           image_url: string | null
           in_progress_value: number | null
+          outstanding_value: number | null
+          pct_delivered: number | null
           pct_dispatched: number | null
-          pct_settled: number | null
+          pct_in_progress: number | null
+          pct_returned: number | null
           po_date: string | null
           po_id: string | null
           po_ref: string | null
@@ -492,13 +499,14 @@ export type Database = {
           product_id: string | null
           product_name: string | null
           qty_approved: number | null
+          qty_cancelled: number | null
           qty_delivered: number | null
           qty_dispatched: number | null
           qty_in_progress: number | null
           qty_outstanding: number | null
           qty_requested: number | null
           qty_returned: number | null
-          qty_settled: number | null
+          queue_position: number | null
           request_status: Database["public"]["Enums"]["request_status"] | null
           returned_value: number | null
           sku: string | null
@@ -685,6 +693,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_cancelled: number
           qty_released: number
           qty_requested: number
           requested_by: string
@@ -718,6 +727,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_cancelled: number
           qty_released: number
           qty_requested: number
           requested_by: string
@@ -748,6 +758,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_cancelled: number
           qty_released: number
           qty_requested: number
           requested_by: string
@@ -818,6 +829,7 @@ export type Database = {
           note: string | null
           product_id: string
           qty_approved: number | null
+          qty_cancelled: number
           qty_released: number
           qty_requested: number
           requested_by: string
@@ -830,6 +842,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      release_reserved_qty: {
+        Args: { p_rows: Json }
+        Returns: {
+          message: string
+          ok: boolean
+          sku: string
+        }[]
       }
     }
     Enums: {

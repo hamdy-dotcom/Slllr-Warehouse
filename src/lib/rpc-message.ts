@@ -20,6 +20,8 @@ import { money } from "@/lib/money";
  *   record_stock_movements   `SKU not found`
  *                            `Would leave 0 units, below the 76 reserved…`
  *                            `1637 → 1137, across 2 POs`
+ *   release_reserved_qty     `released 30 units back across 2 POs`
+ *                            `Only 15 units are still reserved on this product`
  *   record_settlements       `SKU not found`
  *                            `Only 3 units are in progress for this SKU`
  *                            `delivered 100 units, SAR 25925.00`
@@ -72,6 +74,16 @@ const PATTERNS: {
     params: (m) => ({ left: m[1], reserved: m[2] }),
   },
   { test: /request_id/, key: "needsRequest" },
+  {
+    test: /^released ([\d,]+) units back across (\d+) POs?$/,
+    key: "releasedAcross",
+    params: (m) => ({ count: m[1], pos: Number(m[2]) }),
+  },
+  {
+    test: /^Only ([\d,]+) units are still reserved on this product$/,
+    key: "onlyReserved",
+    params: (m) => ({ available: m[1] }),
+  },
   {
     test: /^Only ([\d,]+) units are in progress for this SKU$/,
     key: "onlyInProgress",

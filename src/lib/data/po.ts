@@ -4,12 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import type { SessionProfile } from "@/lib/auth";
 import type { PoQueueLine } from "@/lib/daily";
 import {
-  groupPoQueues,
+  matchesPoFilter,
+  sortPos,
   type Po,
   type PoFilter,
-  type PoQueue,
   type PoSettlementEntry,
+  type PoSort,
   type PoStatus,
+  type SortDir,
 } from "@/lib/po";
 
 /**
@@ -43,14 +45,19 @@ function toPo(row: Record<string, unknown>): Po | null {
     qty_outstanding: num(row.qty_outstanding),
     qty_delivered: num(row.qty_delivered),
     qty_returned: num(row.qty_returned),
-    qty_settled: num(row.qty_settled),
+    qty_cancelled: num(row.qty_cancelled),
     qty_in_progress: num(row.qty_in_progress),
+    queue_position: num(row.queue_position),
     po_value: num(row.po_value),
+    outstanding_value: num(row.outstanding_value),
     delivered_value: num(row.delivered_value),
     returned_value: num(row.returned_value),
     in_progress_value: num(row.in_progress_value),
+    cancelled_value: num(row.cancelled_value),
     pct_dispatched: num(row.pct_dispatched),
-    pct_settled: num(row.pct_settled),
+    pct_in_progress: num(row.pct_in_progress),
+    pct_delivered: num(row.pct_delivered),
+    pct_returned: num(row.pct_returned),
     po_status: (row.po_status as PoStatus) ?? "awaiting dispatch",
   };
 }
@@ -73,18 +80,29 @@ async function readPos(profile: SessionProfile): Promise<Po[]> {
   });
 }
 
+/** Every PO the caller may see, unfiltered and unsorted. */
+export async function listAllPos(profile: SessionProfile): Promise<Po[]> {
+  return readPos(profile);
+}
+
 /**
- * POs grouped into one queue per product, filtered for display.
+ * The rows the table renders.
  *
- * The filter is handed to `groupPoQueues` rather than applied first, so each
- * queue is shaped while every one of its POs is still present and a hidden
- * sibling cannot change the position the survivors report.
+ * `queue_position` comes off the view, so filtering and sorting only decide
+ * what is on screen and in what order — never what a PO's real place in its
+ * product's queue is.
  */
-export async function listPoQueues(
-  profile: SessionProfile,
-  filter: PoFilter = {},
-): Promise<PoQueue[]> {
-  return groupPoQueues(await readPos(profile), filter);
+export function listPos(
+  all: Po[],
+  filter: PoFilter,
+  sort: PoSort,
+  dir: SortDir,
+): Po[] {
+  return sortPos(
+    all.filter((po) => matchesPoFilter(po, filter)),
+    sort,
+    dir,
+  );
 }
 
 /**

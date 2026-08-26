@@ -254,28 +254,44 @@ A PO is one approved reserve request for one product. Nothing about a PO is
 stored — the `po_settlement` view derives every figure from the request, the
 movements booked against it, and the settlements booked against those.
 
-**Each product has its own queue**, ordered by the PO's date. Both
-`record_stock_movements` and `record_settlements` walk that queue oldest PO
-first, so the oldest PO *for that product* dispatches and settles first — the
-oldest PO overall has nothing to do with it. The wallet groups POs by product
-for exactly that reason: a flat list sorted by date would imply a single queue
-that does not exist.
+**Each product has its own queue**, ordered by the PO's date — `queue_position`
+in the view. Which end of that queue an operation eats from is a rule per
+operation, not one FIFO rule everywhere:
+
+| Operation | Takes from |
+|---|---|
+| dispatch | oldest PO first |
+| delivered | oldest PO first |
+| returned | **newest** PO first |
+| release | **newest** PO first |
+
+Returns and releases run backwards on purpose: the units most recently
+committed are the first ones handed back, so the oldest commitment is the last
+one given up.
+
+`qty_approved` never shrinks. Releasing raises `qty_cancelled` instead, so the
+audit trail keeps saying what was originally granted, and outstanding is
+`qty_approved - qty_dispatched - qty_cancelled`.
 
 Allocation lives in the database and nowhere else. A dispatch is sent as one
 row with no `request_id`; the RPC spreads it across as many POs as it takes
-and writes one movement per PO touched, checking the whole quantity fits
-before writing anything. Passing a `request_id` targets one specific PO, which
-the app never does.
+and writes one movement per PO touched, checking the whole quantity fits before
+writing anything. `release_reserved_qty` works the same way from the other end.
+Passing a `request_id` targets one specific PO, which the app never does.
 
 The daily update still simulates a paste before sending it, but the simulation
-mirrors that queue rather than deciding anything: it walks each product's POs
-oldest first so the preview can name the POs a row will hit, and refuses a
-paste it cannot place. What it draws is a forecast of the RPC's work, never an
-instruction to it.
+mirrors those rules rather than deciding anything — including walking the queue
+backwards for a return — so the preview can name the POs a row will hit. What
+it draws is a forecast of the RPC's work, never an instruction to it.
+
+The wallet lists POs as one row per PO, sorted by product then queue order by
+default so each product's rows read top to bottom in the order they settle.
+`queue_position` is on every row, because re-sorting the table changes what is
+on screen and nothing about the order the RPCs will consume the POs in.
 
 A PO's settlement history has no column of its own. A settlement points at the
-release movement it consumed, and that movement carries the `request_id` of
-the PO it was dispatched against, so the path is
+release movement it consumed, and that movement carries the `request_id` of the
+PO it was dispatched against, so the path is
 `settlements → stock_movements → request_id`.
 
 ### Who can see what
