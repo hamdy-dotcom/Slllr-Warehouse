@@ -119,7 +119,7 @@ export async function poSettlementHistory(
   let query = supabase
     .from("settlements")
     .select(
-      "id, kind, qty, value, occurred_on, reference, note, stock_movements!inner(request_id)",
+      "id, kind, qty, unit_cost, value, occurred_on, reference, note, stock_movements!inner(request_id)",
     )
     .order("occurred_on", { ascending: false });
 
@@ -133,6 +133,7 @@ export async function poSettlementHistory(
       id: string;
       kind: "delivered" | "returned";
       qty: number;
+      unit_cost: number | null;
       value: number | null;
       occurred_on: string;
       reference: string | null;
@@ -157,6 +158,7 @@ export async function poSettlementHistory(
       po_id: poId,
       kind: row.kind,
       qty: row.qty,
+      unit_cost: row.unit_cost,
       value: row.value ?? 0,
       occurred_on: row.occurred_on,
       reference: row.reference,

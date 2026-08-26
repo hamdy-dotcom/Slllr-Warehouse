@@ -313,6 +313,17 @@ never did.
 `queue_position` is on every row, because re-sorting the table changes what is
 on screen and nothing about the order the RPCs will consume the POs in.
 
+The section exports to `.xlsx` at `/wallet/export`, which takes the same
+query the page is reading so the workbook is whatever is on screen — filters,
+search and sort included. Two sheets: one row per PO, and the deliveries and
+returns behind those POs. It is a real workbook rather than a CSV because
+Arabic in a CSV depends on the reader guessing UTF-8 and loses column
+direction, and because the amounts have to arrive as numbers: the totals row
+is a `SUM` formula, so it still adds up after someone edits a cell. In Arabic
+the sheets are written right to left. The route sits under `/wallet` so the
+middleware's role gate covers it, and the rows come from the same
+security_invoker view, so a supplier's export can only hold its own POs.
+
 A PO's settlement history has no column of its own. A settlement points at the
 release movement it consumed, and that movement carries the `request_id` of the
 PO it was dispatched against, so the path is

@@ -99,6 +99,8 @@ export type PoSettlementEntry = {
   po_id: string;
   kind: "delivered" | "returned";
   qty: number;
+  /** The cost this settlement was booked at, not the PO's current one. */
+  unit_cost: number | null;
   value: number;
   occurred_on: string;
   reference: string | null;

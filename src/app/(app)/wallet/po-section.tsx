@@ -11,6 +11,7 @@ import {
   type SortDir,
 } from "@/lib/po";
 import type { SessionProfile } from "@/lib/auth";
+import { ExportButton } from "./export-button";
 import { PoFilters } from "./po-filters";
 import { PoTable } from "./po-table";
 import { ReleaseReservedButton } from "./release-dialog";
@@ -79,6 +80,7 @@ export async function PoSection({
         q={filter.q}
         suppliers={suppliers}
       >
+        <ExportButton />
         {canRelease ? <ReleaseReservedButton pos={all} /> : null}
       </PoFilters>
 
