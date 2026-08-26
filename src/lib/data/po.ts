@@ -26,11 +26,6 @@ import {
 function toPo(row: Record<string, unknown>): Po | null {
   if (!row.po_id || !row.po_ref || !row.po_date) return null;
 
-  // A request cancelled before anyone approved it never became a PO: the view
-  // carries it with a null qty_approved, and there is nothing to split into
-  // dispatched, delivered, returned, outstanding and cancelled.
-  if (row.qty_approved === null || row.qty_approved === undefined) return null;
-
   const num = (value: unknown) => Number(value ?? 0);
 
   return {

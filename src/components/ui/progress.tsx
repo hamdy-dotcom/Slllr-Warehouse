@@ -1,11 +1,13 @@
 import { cn } from "@/lib/cn";
 
-export type ProgressTone = "orange" | "green" | "amber";
+export type ProgressTone = "orange" | "green" | "amber" | "muted";
 
 const TONE: Record<ProgressTone, string> = {
   orange: "bg-orange",
   green: "bg-green",
   amber: "bg-amber",
+  /** Accounted for, but not progress — a share that went the other way. */
+  muted: "bg-grey",
 };
 
 /**

@@ -21,10 +21,11 @@
  *
  * **Dispatched means the live pool** — units with customers now, waiting to be
  * delivered or returned — which is `qty_in_progress` in the view. The view
- * also carries `qty_dispatched`, a cumulative counter of everything that ever
- * left, including units since settled; it is deliberately not on this type,
- * because a total that only grows would contradict the identity above
- * anywhere it was shown.
+ * also carries `qty_dispatched_total`, everything that ever left including
+ * units since settled; it is deliberately not on this type, because a total
+ * that only grows would contradict the identity above anywhere it was shown
+ * as a quantity. Its share of the PO is `pct_off_shelf` in the view and
+ * `poLeftShelf().pct` here, which is a fair thing to show.
  */
 
 /** Exactly the strings `po_settlement.po_status` stores, spaces and all. */
@@ -194,15 +195,22 @@ export function sortPos(pos: Po[], sort: PoSort, dir: SortDir): Po[] {
 }
 
 /**
- * How much of a PO has left the shelf, and in what state it sits now.
+ * How much of a PO has left the shelf, and where all of it sits now.
  *
  * Dispatched, delivered and returned are all units that went out: a delivery
  * or a return moves a unit on from dispatched, it does not put it back. So
- * "gone" is the three added together, and a PO with nothing outstanding is
- * fully gone however much of it has since been settled.
+ * `qty` is the three added together — the view calls the same figure
+ * `qty_dispatched_total` — and a PO with nothing outstanding has fully gone
+ * however much of it has since been settled.
  *
- * Worked out from the quantities rather than by adding the view's three
- * percentages, which each round on their own and drift a point off the total.
+ * Cancelled is the fourth share and never left the shelf, so it is not in
+ * `pct`. It is reported separately because a bar that ignored it would leave
+ * a PO that was fully dispatched and partly released back looking unfinished,
+ * when there is nothing more to send.
+ *
+ * Worked out from the quantities rather than read from `pct_off_shelf` and
+ * the three per-state percentages, which each round on their own and drift a
+ * point off their own total.
  */
 export function poLeftShelf(po: Po): {
   qty: number;
@@ -210,6 +218,7 @@ export function poLeftShelf(po: Po): {
   dispatchedPct: number;
   deliveredPct: number;
   returnedPct: number;
+  cancelledPct: number;
 } {
   const qty = po.qty_in_progress + po.qty_delivered + po.qty_returned;
   const share = (part: number) =>
@@ -221,6 +230,7 @@ export function poLeftShelf(po: Po): {
     dispatchedPct: share(po.qty_in_progress),
     deliveredPct: share(po.qty_delivered),
     returnedPct: share(po.qty_returned),
+    cancelledPct: share(po.qty_cancelled),
   };
 }
 

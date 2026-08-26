@@ -488,8 +488,8 @@ export type Database = {
           in_progress_value: number | null
           outstanding_value: number | null
           pct_delivered: number | null
-          pct_dispatched: number | null
           pct_in_progress: number | null
+          pct_off_shelf: number | null
           pct_returned: number | null
           po_date: string | null
           po_id: string | null
@@ -501,7 +501,7 @@ export type Database = {
           qty_approved: number | null
           qty_cancelled: number | null
           qty_delivered: number | null
-          qty_dispatched: number | null
+          qty_dispatched_total: number | null
           qty_in_progress: number | null
           qty_outstanding: number | null
           qty_requested: number | null
@@ -574,14 +574,14 @@ export type Database = {
           decided_at: string | null
           decided_by: string | null
           decision_note: string | null
-          dispatched_value: number | null
           hold_until: string | null
           id: string | null
           note: string | null
           outstanding_value: number | null
           product_id: string | null
           qty_approved: number | null
-          qty_dispatched: number | null
+          qty_cancelled: number | null
+          qty_dispatched_total: number | null
           qty_outstanding: number | null
           qty_requested: number | null
           requested_by: string | null
@@ -593,14 +593,14 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
-          dispatched_value?: never
           hold_until?: string | null
           id?: string | null
           note?: string | null
           outstanding_value?: never
           product_id?: string | null
           qty_approved?: number | null
-          qty_dispatched?: number | null
+          qty_cancelled?: number | null
+          qty_dispatched_total?: number | null
           qty_outstanding?: never
           qty_requested?: number | null
           requested_by?: string | null
@@ -612,14 +612,14 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
-          dispatched_value?: never
           hold_until?: string | null
           id?: string | null
           note?: string | null
           outstanding_value?: never
           product_id?: string | null
           qty_approved?: number | null
-          qty_dispatched?: number | null
+          qty_cancelled?: number | null
+          qty_dispatched_total?: number | null
           qty_outstanding?: never
           qty_requested?: number | null
           requested_by?: string | null

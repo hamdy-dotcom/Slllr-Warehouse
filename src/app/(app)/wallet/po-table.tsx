@@ -347,15 +347,19 @@ export function PoTable({
  * half-served while the PO behind it in the queue looked served first.
  *
  * So the bar stacks all three states a departed unit can be in, and the
- * percentage is their total over approved. Whatever is left of the track is
- * still on the shelf: outstanding, or released back.
+ * percentage is their total over approved. A fourth muted segment carries
+ * anything released back to the supplier: those units never left the shelf,
+ * so they are not in the percentage, but without them a PO that was fully
+ * dispatched and partly released would read as unfinished when there is
+ * nothing more to send. What is left of the track is what is still on the
+ * shelf waiting to go.
  */
 function Dispatched({ po }: { po: Po }) {
   const gone = poLeftShelf(po);
 
   return (
     <td className={`${TD} text-end tabular-nums`}>
-      {gone.qty === 0 ? (
+      {gone.qty === 0 && po.qty_cancelled === 0 ? (
         <span className="text-ink-3">—</span>
       ) : (
         <>
@@ -378,6 +382,7 @@ function Dispatched({ po }: { po: Po }) {
               { pct: gone.dispatchedPct, tone: "orange" },
               { pct: gone.deliveredPct, tone: "green" },
               { pct: gone.returnedPct, tone: "amber" },
+              { pct: gone.cancelledPct, tone: "muted" },
             ]}
           />
         </>

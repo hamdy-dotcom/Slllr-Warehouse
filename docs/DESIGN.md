@@ -112,6 +112,11 @@ shrinks to account for it.
 A row about a PO adds up: approved = dispatched + delivered + returned +
 outstanding + cancelled.
 
+A progress bar over one of those rows stacks every share, cancelled included
+in a muted grey, so the empty part of the track always means "still on the
+shelf" and nothing else. A percentage printed next to it counts only what
+left the shelf.
+
 ## Direction
 
 Arabic renders right to left: `<html dir="rtl" lang="ar">`, set from the

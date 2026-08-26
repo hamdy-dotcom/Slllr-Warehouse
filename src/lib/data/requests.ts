@@ -98,11 +98,10 @@ export async function listMyRequests(): Promise<RequestWithStock[]> {
  * rejected has no PO and keeps nulls — there is nothing with customers to
  * report for it.
  *
- * Outstanding comes across too, deliberately. `reserve_request_dispatch`
- * still works it out as approved − dispatched and does not subtract
- * `qty_cancelled`, so on a PO that has had quantity released it reports more
- * reserved than exists — 20 against a real 5 on the sample data. Only
- * `po_settlement` applies the current formula.
+ * Outstanding comes across too. `reserve_request_dispatch` subtracts
+ * `qty_cancelled` itself now and the two agree on every row, so this is no
+ * longer a correction — it is so that all five parts of a row come from one
+ * view and cannot disagree with each other mid-write.
  */
 async function withLivePool(rows: RequestDispatch[]): Promise<RequestDispatch[]> {
   if (rows.length === 0) return rows;
@@ -231,9 +230,8 @@ export type RequestValues = {
 export async function requestValues(): Promise<RequestValues> {
   const supabase = await createClient();
 
-  // Held reads from po_settlement: it is the only view that takes released
-  // quantity off outstanding, and this figure is the dashboard's custody KPI.
-  // Asked is pending requests, which have no PO yet.
+  // Held reads from po_settlement, the canonical view of a PO. Asked is
+  // pending requests, which have no PO yet.
   const [held, asked] = await Promise.all([
     supabase
       .from("po_settlement")

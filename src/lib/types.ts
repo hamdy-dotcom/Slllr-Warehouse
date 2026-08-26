@@ -18,11 +18,12 @@ export type ReserveRequest = Tables["reserve_requests"]["Row"];
 /**
  * `reserve_request_dispatch`, normalised.
  *
- * The view's `qty_dispatched` is a cumulative counter — everything that has
- * ever left the warehouse against this request, including units since
- * delivered or returned. It is deliberately absent here: "dispatched" on a
- * screen means the live pool of units with customers, and a total that only
- * ever grows would quietly contradict that everywhere it appeared.
+ * The view's `qty_dispatched_total` is everything that has left the warehouse
+ * against this request, including units since delivered or returned. It is
+ * deliberately absent here: "dispatched" on a screen means the live pool of
+ * units with customers, and a total that only ever grows would quietly
+ * contradict that everywhere it appeared as a quantity. Its share of the PO
+ * is a different matter and does belong on screen — see `poLeftShelf`.
  *
  * The live figures come from `po_settlement` and are stitched on in
  * `listMyRequests`. They are null for a request that never became a PO.

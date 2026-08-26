@@ -257,22 +257,21 @@ movements booked against it, and the settlements booked against those.
 **Dispatched means the live pool.** Units that have left the warehouse to
 customers and are waiting to be delivered or returned — `qty_in_progress` in
 the view. A delivery and a return both take units out of it. The view also
-carries `qty_dispatched`, a cumulative counter of everything that ever left
-including units since settled: that one is internal and is never shown, and it
-is deliberately absent from the `Po` and `RequestDispatch` types so a screen
-cannot render it by accident.
+carries `qty_dispatched_total`, everything that ever left including units
+since settled: that is not a quantity any screen shows, and it is deliberately
+absent from the `Po` and `RequestDispatch` types so one cannot render it by
+accident. Its *share* of the PO is a different matter and does belong on
+screen — the view calls it `pct_off_shelf`.
 
-Every PO therefore reads as one identity:
+Every PO reads as one identity:
 
 ```
 approved = dispatched + delivered + returned + outstanding + cancelled
 ```
 
-`reserve_request_dispatch` is one view behind on this: its `qty_outstanding`
-is still approved − dispatched and does not subtract `qty_cancelled`, so on a
-PO that has had quantity released it overstates what is reserved. Anything
-that needs outstanding reads `po_settlement` instead — the requests table and
-the dashboard's custody figure both do.
+Percentages on the PO table are worked out from those quantities rather than
+read from the view's own `pct_*` columns. Each of those rounds on its own, so
+adding them drifts a point off their own total.
 
 **Each product has its own queue**, ordered by the PO's date — `queue_position`
 in the view. Which end of that queue an operation eats from is a rule per
@@ -306,6 +305,11 @@ it draws is a forecast of the RPC's work, never an instruction to it.
 
 The wallet lists POs as one row per PO, sorted by product then queue order by
 default so each product's rows read top to bottom in the order they settle.
+The dispatched bar stacks all four states the approved quantity can be in —
+dispatched, delivered, returned, and a muted share for anything released back
+— so what is left of the track is exactly what is still on the shelf. The
+percentage beside it counts only the three that left, since released units
+never did.
 `queue_position` is on every row, because re-sorting the table changes what is
 on screen and nothing about the order the RPCs will consume the POs in.
 
