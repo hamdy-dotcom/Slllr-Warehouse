@@ -13,6 +13,7 @@ import { applyShelfFilter, isShelfFilter, type ShelfFilter } from "@/lib/shelf";
 import { relativeTime } from "@/lib/format";
 import { readViewMode } from "@/lib/view-cookie";
 import { BulkUpdateButton } from "./bulk-dialog";
+import { AddProductsButton } from "./create-dialog";
 import { InlineQty } from "./inline-qty";
 import { AddProductButton, EditProductButton } from "./product-dialog";
 
@@ -53,6 +54,7 @@ export default async function InventoryPage({
       <ShelfToolbar q={q} filter={active}>
         <ViewToggle route={ROUTE} mode={view} />
         <BulkUpdateButton shelf={shelf} />
+        <AddProductsButton shelf={shelf} />
         <AddProductButton />
       </ShelfToolbar>
 

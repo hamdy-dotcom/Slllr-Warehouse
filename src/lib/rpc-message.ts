@@ -20,6 +20,10 @@ import { money } from "@/lib/money";
  *   record_stock_movements   `SKU not found`
  *                            `Would leave 0 units, below the 76 reserved…`
  *                            `1637 → 1137, across 2 POs`
+ *   bulk_create_products     `added, 12 units`
+ *                            `This SKU already exists — use the bulk stock…`
+ *                            `Warehouse code must look like L03-R02-B07`
+ *                            `Name, SKU, and warehouse code are all required`
  *   release_reserved_qty     `released 30 units back across 2 POs`
  *                            `Only 15 units are still reserved on this product`
  *   record_settlements       `SKU not found`
@@ -74,6 +78,23 @@ const PATTERNS: {
     params: (m) => ({ left: m[1], reserved: m[2] }),
   },
   { test: /request_id/, key: "needsRequest" },
+  {
+    test: /^added, ([\d,]+) units?$/,
+    key: "productAdded",
+    params: (m) => ({ count: m[1] }),
+  },
+  {
+    test: /^This SKU already exists/,
+    key: "skuExists",
+  },
+  {
+    test: /^Warehouse code must look like/,
+    key: "badWarehouseCode",
+  },
+  {
+    test: /^Name, SKU, and warehouse code are all required$/,
+    key: "productFieldsRequired",
+  },
   {
     test: /^released ([\d,]+) units back across (\d+) POs?$/,
     key: "releasedAcross",

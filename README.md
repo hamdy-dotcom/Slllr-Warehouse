@@ -137,6 +137,24 @@ Every single-row quantity change — the inline box on a row, and the quantity
 field in the edit dialog — goes through the same RPC, for the reason in the
 Database section above.
 
+### Adding products in bulk
+
+A supplier can paste or upload `sku,name,warehouse_code,total_qty,unit_cost,image_url`
+and create many products at once, alongside the single add form and the bulk
+stock update. Only the first three columns are required; a blank quantity
+starts the product at 0.
+
+`bulk_create_products` owns every rule — the warehouse code shape, the refusal
+to overwrite a SKU that already exists, and the scoping to the caller's own
+supplier — and reports per row so one bad line does not cost the others. The
+parser checks the same things first, and the preview flags a SKU already on
+the shelf, so a duplicate is seen before sending rather than as a failure
+afterwards. Only the rows the button counts are sent, so the result table says
+exactly what was attempted.
+
+Warehouse codes are uppercased on parse, and the CSV headers read in either
+language, the same as the movements and stock templates.
+
 ### Cost and value
 
 Money is SAR throughout, formatted in `src/lib/money.ts` — two decimals for a

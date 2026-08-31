@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
-import { requireSupplier } from "@/lib/auth";
+import { requireProfile, requireSupplier } from "@/lib/auth";
 import { parseCost } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { rpcTranslator } from "@/lib/rpc-message";
+import type { ProductCsvRow } from "@/lib/products-csv";
 
 /** `L03-R02-B07` — line, rack, bin. Any two-digit line or bin is accepted. */
 const WAREHOUSE_CODE = /^L\d{2}-R\d{2}-B\d{2}$/;
@@ -493,4 +494,64 @@ async function applyCosts(
   }
 
   return outcomes;
+}
+
+export type CreateResult = { sku: string | null; ok: boolean; message: string };
+
+export type CreateState = {
+  error?: string;
+  savedAt?: number;
+  results?: CreateResult[];
+};
+
+/**
+ * Creates products in bulk through `bulk_create_products`, which reports per
+ * row rather than failing the batch — one bad line does not cost the others.
+ *
+ * The RPC owns every rule: the warehouse code shape, the refusal to overwrite
+ * a SKU that already exists, and the scoping to the caller's own supplier.
+ * The parser checks the same things first so the preview can flag a row
+ * before it is sent, not instead of the RPC checking it.
+ */
+export async function bulkCreateProducts(
+  _previous: CreateState,
+  formData: FormData,
+): Promise<CreateState> {
+  const raw = String(formData.get("rows") ?? "");
+  const [t, say] = await Promise.all([
+    getTranslations("errors"),
+    rpcTranslator(),
+  ]);
+
+  let rows: ProductCsvRow[];
+  try {
+    rows = JSON.parse(raw);
+  } catch {
+    return { error: t("cannotRead") };
+  }
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { error: t("nothingToUpdate") };
+  }
+
+  const profile = await requireProfile();
+  if (profile.role !== "supplier") {
+    return { error: t("onlySupplierCreate") };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("bulk_create_products", {
+    p_rows: rows,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  revalidatePath("/catalog");
+  revalidatePath("/dashboard");
+
+  return {
+    savedAt: Date.now(),
+    results: (data ?? []).map((row) => ({ ...row, message: say(row.message) })),
+  };
 }

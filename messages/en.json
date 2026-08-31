@@ -184,7 +184,21 @@
     "qtyAria": "Total units, currently {total}. At least {reserved} is reserved.",
     "newProduct": "New product",
     "updatedRows": "Updated {count} rows",
-    "csvPlaceholder": "{sku},{total},{code},{cost}\nSKU-1001,320,L01-R01-B01,69.25"
+    "csvPlaceholder": "{sku},{total},{code},{cost}\nSKU-1001,320,L01-R01-B01,69.25",
+    "createTitle": "Add products in bulk",
+    "createAction": "Add in bulk",
+    "createLede": "Columns are sku, name, warehouse_code, total_qty, unit_cost, image_url. Only the first three are required — a blank quantity starts the product at 0.",
+    "createPlaceholder": "{sku},{name},{code},{total},{cost},{image}\nSKU-9001,Cordless kettle 1.7L,L03-R02-B07,500,69.25,",
+    "createReady": "{count, plural, one {# product will be created} other {# products will be created}}",
+    "createBlocked": " · {count, plural, one {# already on your shelf} other {# already on your shelf}}",
+    "createDuplicate": "already on your shelf",
+    "createRows": "Create {count, plural, one {# product} other {# products}}",
+    "creating": "Creating…",
+    "createdRows": "Created {count, plural, one {# product} other {# products}}",
+    "createFailed": "{count, plural, one {# row did not go through.} other {# rows did not go through.}} The rest were created.",
+    "createAllOk": "All {count} rows went through.",
+    "createMore": "Add more",
+    "createEmptyQty": "0"
   },
   "requests": {
     "title": "My requests",
@@ -389,7 +403,9 @@
     "note": "note",
     "kind_dispatched": "dispatched",
     "kind_delivered": "delivered",
-    "kind_returned": "returned"
+    "kind_returned": "returned",
+    "name": "name",
+    "image_url": "image_url"
   },
   "errors": {
     "requiredFields": "Name, SKU, warehouse code, and total units are all required.",
@@ -434,7 +450,8 @@
     "onlyInProgress": "Only {available} units are dispatched, not {wanted}",
     "stockMovementsPolicy": "Stock changes are not being recorded. stock_movements has row level security on with no insert policy, and guard_total_qty is not security definer.",
     "checkInProgress": "Could not check what is dispatched: {message}",
-    "onlySllrRelease": "Only a Sllr account can release reserved quantity."
+    "onlySllrRelease": "Only a Sllr account can release reserved quantity.",
+    "onlySupplierCreate": "Only a supplier account can add products."
   },
   "csvErrors": {
     "headerStock": "The header needs a sku column and a total_qty column. warehouse_code and unit_cost are optional.",
@@ -447,7 +464,10 @@
     "costValue": "{sku} has a cost of \"{value}\". Use a number of at least 0, blank to leave it, or - to clear it.",
     "badKind": "{sku}: \"{value}\" is not one of {kinds}.",
     "badSettlementKind": "{sku}: \"{value}\" is not dispatched, delivered, or returned.",
-    "badDate": "{sku}: \"{value}\" is not a date. Use YYYY-MM-DD."
+    "badDate": "{sku}: \"{value}\" is not a date. Use YYYY-MM-DD.",
+    "headerCreate": "The header needs sku, name, and warehouse_code columns. total_qty, unit_cost and image_url are optional.",
+    "noName": "{sku} needs a product name.",
+    "badCode": "{sku}: \"{value}\" is not a warehouse code. Use the line-rack-bin format, for example L03-R02-B07."
   },
   "status": {
     "pending": "pending",
@@ -473,7 +493,11 @@
     "wordDelivered": "Delivered",
     "wordReturned": "Returned",
     "releasedAcross": "Released {count} units back across {pos, plural, one {# PO} other {# POs}}",
-    "onlyReserved": "Only {available} units are still reserved on this product"
+    "onlyReserved": "Only {available} units are still reserved on this product",
+    "productAdded": "Added, {count} units",
+    "skuExists": "This SKU already exists — use the bulk stock update to change it",
+    "badWarehouseCode": "Warehouse code must look like L03-R02-B07",
+    "productFieldsRequired": "Name, SKU, and warehouse code are all required"
   },
   "sim": {
     "skuNotFound": "SKU not found",

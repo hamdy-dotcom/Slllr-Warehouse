@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -124,6 +124,7 @@ export type Database = {
           qty_cancelled: number
           qty_released: number
           qty_requested: number
+          qty_returned: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
           unit_cost: number | null
@@ -141,6 +142,7 @@ export type Database = {
           qty_cancelled?: number
           qty_released?: number
           qty_requested: number
+          qty_returned?: number
           requested_by: string
           status?: Database["public"]["Enums"]["request_status"]
           unit_cost?: number | null
@@ -158,6 +160,7 @@ export type Database = {
           qty_cancelled?: number
           qty_released?: number
           qty_requested?: number
+          qty_returned?: number
           requested_by?: string
           status?: Database["public"]["Enums"]["request_status"]
           unit_cost?: number | null
@@ -490,7 +493,6 @@ export type Database = {
           pct_delivered: number | null
           pct_in_progress: number | null
           pct_off_shelf: number | null
-          pct_returned: number | null
           po_date: string | null
           po_id: string | null
           po_ref: string | null
@@ -584,6 +586,7 @@ export type Database = {
           qty_dispatched_total: number | null
           qty_outstanding: number | null
           qty_requested: number | null
+          qty_returned: number | null
           requested_by: string | null
           status: Database["public"]["Enums"]["request_status"] | null
           unit_cost: number | null
@@ -603,6 +606,7 @@ export type Database = {
           qty_dispatched_total?: number | null
           qty_outstanding?: never
           qty_requested?: number | null
+          qty_returned?: number | null
           requested_by?: string | null
           status?: Database["public"]["Enums"]["request_status"] | null
           unit_cost?: number | null
@@ -622,6 +626,7 @@ export type Database = {
           qty_dispatched_total?: number | null
           qty_outstanding?: never
           qty_requested?: number | null
+          qty_returned?: number | null
           requested_by?: string | null
           status?: Database["public"]["Enums"]["request_status"] | null
           unit_cost?: number | null
@@ -696,6 +701,7 @@ export type Database = {
           qty_cancelled: number
           qty_released: number
           qty_requested: number
+          qty_returned: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
           unit_cost: number | null
@@ -706,6 +712,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      bulk_create_products: {
+        Args: { p_rows: Json }
+        Returns: {
+          message: string
+          ok: boolean
+          sku: string
+        }[]
       }
       bulk_update_stock: {
         Args: { p_rows: Json }
@@ -730,6 +744,7 @@ export type Database = {
           qty_cancelled: number
           qty_released: number
           qty_requested: number
+          qty_returned: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
           unit_cost: number | null
@@ -761,6 +776,7 @@ export type Database = {
           qty_cancelled: number
           qty_released: number
           qty_requested: number
+          qty_returned: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
           unit_cost: number | null
@@ -832,6 +848,7 @@ export type Database = {
           qty_cancelled: number
           qty_released: number
           qty_requested: number
+          qty_returned: number
           requested_by: string
           status: Database["public"]["Enums"]["request_status"]
           unit_cost: number | null

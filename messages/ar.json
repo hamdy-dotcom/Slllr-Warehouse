@@ -184,7 +184,21 @@
     "qtyAria": "إجمالي الوحدات، حاليًا {total}. المحجوز منها {reserved} على الأقل.",
     "newProduct": "منتج جديد",
     "updatedRows": "حُدّث {count} صف",
-    "csvPlaceholder": "{sku},{total},{code},{cost}\nSKU-1001,320,L01-R01-B01,69.25"
+    "csvPlaceholder": "{sku},{total},{code},{cost}\nSKU-1001,320,L01-R01-B01,69.25",
+    "createTitle": "إضافة منتجات جماعيًا",
+    "createAction": "إضافة جماعية",
+    "createLede": "الأعمدة هي رمز المنتج، الاسم، موقع المستودع، الكمية الإجمالية، تكلفة الوحدة، رابط الصورة. الثلاثة الأولى وحدها مطلوبة — الكمية الفارغة تبدأ المنتج من 0.",
+    "createPlaceholder": "{sku},{name},{code},{total},{cost},{image}\nSKU-9001,غلاية لاسلكية 1.7 لتر,L03-R02-B07,500,69.25,",
+    "createReady": "{count, plural, zero {لن يُنشأ أي منتج} one {سيُنشأ منتج واحد} two {سيُنشأ منتجان} few {ستُنشأ # منتجات} many {سيُنشأ # منتجًا} other {سيُنشأ # منتج}}",
+    "createBlocked": " · {count, plural, zero {لا شيء على رفّك} one {واحد على رفّك بالفعل} two {اثنان على رفّك بالفعل} few {# على رفّك بالفعل} many {# على رفّك بالفعل} other {# على رفّك بالفعل}}",
+    "createDuplicate": "موجود على رفّك",
+    "createRows": "إنشاء {count, plural, zero {لا منتجات} one {منتج واحد} two {منتجين} few {# منتجات} many {# منتجًا} other {# منتج}}",
+    "creating": "جارٍ الإنشاء…",
+    "createdRows": "أُنشئ {count, plural, zero {لا منتجات} one {منتج واحد} two {منتجان} few {# منتجات} many {# منتجًا} other {# منتج}}",
+    "createFailed": "{count, plural, zero {مرّت كل الصفوف.} one {صف واحد لم يمر.} two {صفان لم يمرا.} few {# صفوف لم تمر.} many {# صفًا لم يمر.} other {# صف لم يمر.}} أُنشئت البقية.",
+    "createAllOk": "مرّت كل الصفوف الـ{count}.",
+    "createMore": "إضافة المزيد",
+    "createEmptyQty": "0"
   },
   "requests": {
     "title": "طلباتي",
@@ -389,7 +403,9 @@
     "note": "ملاحظة",
     "kind_dispatched": "dispatched",
     "kind_delivered": "delivered",
-    "kind_returned": "returned"
+    "kind_returned": "returned",
+    "name": "الاسم",
+    "image_url": "رابط الصورة"
   },
   "errors": {
     "requiredFields": "الاسم ورمز المنتج وموقع المستودع وإجمالي الوحدات كلها مطلوبة.",
@@ -434,7 +450,8 @@
     "onlyInProgress": "قيد التسليم {available} وحدة فقط، لا {wanted}",
     "stockMovementsPolicy": "تغييرات المخزون لا تُسجَّل. الجدول stock_movements عليه أمان الصفوف بلا سياسة إدراج، والدالة guard_total_qty ليست security definer.",
     "checkInProgress": "تعذّر التحقق مما هو قيد التسليم: {message}",
-    "onlySllrRelease": "حساب Sllr وحده يمكنه تحرير الكمية المحجوزة."
+    "onlySllrRelease": "حساب Sllr وحده يمكنه تحرير الكمية المحجوزة.",
+    "onlySupplierCreate": "حساب المورّد وحده يمكنه إضافة منتجات."
   },
   "csvErrors": {
     "headerStock": "يحتاج العنوان عمود رمز المنتج وعمود الكمية الإجمالية. موقع المستودع وتكلفة الوحدة اختياريان.",
@@ -447,7 +464,10 @@
     "costValue": "{sku} تكلفته \"{value}\". استخدم رقمًا لا يقل عن 0، أو اتركه فارغًا لإبقائه، أو - لمسحه.",
     "badKind": "{sku}: \"{value}\" ليس ضمن {kinds}.",
     "badSettlementKind": "{sku}: \"{value}\" ليس مُرسَلًا ولا مسلّمًا ولا مرتجعًا.",
-    "badDate": "{sku}: \"{value}\" ليس تاريخًا. استخدم صيغة YYYY-MM-DD."
+    "badDate": "{sku}: \"{value}\" ليس تاريخًا. استخدم صيغة YYYY-MM-DD.",
+    "headerCreate": "يحتاج العنوان أعمدة رمز المنتج والاسم وموقع المستودع. الكمية الإجمالية وتكلفة الوحدة ورابط الصورة اختيارية.",
+    "noName": "{sku} يحتاج اسم منتج.",
+    "badCode": "{sku}: \"{value}\" ليس موقع مستودع. استخدم صيغة خط-رف-صندوق، مثل L03-R02-B07."
   },
   "status": {
     "pending": "قيد الانتظار",
@@ -473,7 +493,11 @@
     "wordDelivered": "سُلّم",
     "wordReturned": "أُرجع",
     "releasedAcross": "أُعيدت {count} وحدة عبر {pos, plural, zero {لا أوامر شراء} one {أمر شراء واحد} two {أمري شراء} few {# أوامر شراء} many {# أمر شراء} other {# أمر شراء}}",
-    "onlyReserved": "ما زال محجوزًا {available} وحدة فقط على هذا المنتج"
+    "onlyReserved": "ما زال محجوزًا {available} وحدة فقط على هذا المنتج",
+    "productAdded": "أُضيف، {count} وحدة",
+    "skuExists": "رمز المنتج هذا موجود بالفعل — استخدم التحديث الجماعي للمخزون لتغييره",
+    "badWarehouseCode": "يجب أن يكون موقع المستودع بصيغة L03-R02-B07",
+    "productFieldsRequired": "الاسم ورمز المنتج وموقع المستودع كلها مطلوبة"
   },
   "sim": {
     "skuNotFound": "رمز المنتج غير موجود",
