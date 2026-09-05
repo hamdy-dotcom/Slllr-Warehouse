@@ -88,6 +88,7 @@
     "lede": "رف مشترك بين Sllr والمورّد. احجز، واعتمد، وتابع المخزون المتاح في مكان واحد.",
     "reserveProduct": "حجز منتج",
     "reviewApprovals": "مراجعة الاعتمادات",
+    "recordArrivals": "تسجيل الوصول",
     "stockValue": "قيمة المخزون",
     "skusLive": "{count} صنفًا معروضًا",
     "reservedForSllr": "بانتظار النقل",

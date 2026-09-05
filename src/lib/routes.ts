@@ -41,6 +41,45 @@ export const NAV: Record<AppRole, NavItem[]> = {
   ],
 };
 
+/**
+ * Where the dashboard's cards point, per role.
+ *
+ * The landing page is the first thing an operator clicks, so every href here
+ * has to be one that role can actually open — pointing warehouse at the
+ * catalog just bounced it straight back. `dashboardLinkProblems` holds this
+ * table to ACCESS so a new role cannot quietly reintroduce a dead card.
+ *
+ * `cta.key` names an entry in the `dashboard` messages, never the copy.
+ */
+export type DashboardLinks = {
+  stock: string;
+  requests: string;
+  cta: { href: string; key: string };
+};
+
+export const DASHBOARD: Record<AppRole, DashboardLinks> = {
+  sllr: {
+    stock: "/catalog",
+    requests: "/requests",
+    cta: { href: "/catalog", key: "reserveProduct" },
+  },
+  supplier: {
+    stock: "/inventory",
+    requests: "/approvals",
+    cta: { href: "/approvals", key: "reviewApprovals" },
+  },
+  warehouse: {
+    stock: "/warehouse-stock",
+    requests: "/transfers",
+    cta: { href: "/transfers", key: "recordArrivals" },
+  },
+  admin: {
+    stock: "/catalog",
+    requests: "/requests",
+    cta: { href: "/catalog", key: "reserveProduct" },
+  },
+};
+
 /** Which roles may open each app route. */
 const ACCESS: Record<string, readonly AppRole[]> = {
   "/dashboard": ["sllr", "supplier", "admin", "warehouse"],
@@ -108,4 +147,32 @@ export function canAccess(role: AppRole, pathname: string): boolean {
 
 export function redirectFor(role: AppRole, pathname: string): string {
   return COUNTERPART[role]?.[section(pathname)] ?? HOME;
+}
+
+/**
+ * Every dashboard card that points somewhere its own role cannot open.
+ *
+ * Empty is the only healthy answer. Exported so it can be asserted rather
+ * than eyeballed — a dead link on the landing page is invisible until an
+ * operator clicks it and lands back where they started.
+ */
+export function dashboardLinkProblems(): string[] {
+  const problems: string[] = [];
+
+  for (const role of Object.keys(DASHBOARD) as AppRole[]) {
+    const links = DASHBOARD[role];
+    for (const [name, href] of [
+      ["stock", links.stock],
+      ["requests", links.requests],
+      ["cta", links.cta.href],
+    ] as const) {
+      if (!canAccess(role, href)) {
+        problems.push(
+          `${role}: ${name} -> ${href} (bounces to ${redirectFor(role, href)})`,
+        );
+      }
+    }
+  }
+
+  return problems;
 }

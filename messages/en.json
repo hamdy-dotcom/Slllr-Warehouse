@@ -88,6 +88,7 @@
     "lede": "Shared shelf between Sllr and the supplier. Reserve, approve, and watch the free stock move in one place.",
     "reserveProduct": "Reserve a product",
     "reviewApprovals": "Review approvals",
+    "recordArrivals": "Record arrivals",
     "stockValue": "Stock value",
     "skusLive": "{count} SKUs live",
     "reservedForSllr": "Awaiting transfer",

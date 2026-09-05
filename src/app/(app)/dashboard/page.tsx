@@ -6,6 +6,7 @@ import { Card, Muted, Row, SectionTitle } from "@/components/ui/card";
 import { Kpi } from "@/components/ui/kpi";
 import { StockBar } from "@/components/ui/stock-bar";
 import { requireProfile } from "@/lib/auth";
+import { DASHBOARD } from "@/lib/routes";
 import { listProductStock } from "@/lib/data/products";
 import { movementTotals } from "@/lib/data/movements";
 import { requestCounts, requestValues } from "@/lib/data/requests";
@@ -39,10 +40,10 @@ export default async function DashboardPage() {
   // snapshots on the requests — re-pricing a product must not rewrite those.
   const shelfWorth = shelfValues(shelf);
   const unpriced = unpricedCount(shelfWorth.stock);
-  const supplier = supplierView;
 
-  const stockHref = supplier ? "/inventory" : "/catalog";
-  const requestsHref = supplier ? "/approvals" : "/requests";
+  // Per role, so a warehouse operator is never sent to a screen its own role
+  // redirects away from.
+  const links = DASHBOARD[profile.role];
   const units = (count: number) => tc("unitsCount", { count });
 
   return (
@@ -58,9 +59,7 @@ export default async function DashboardPage() {
             </Muted>
           </div>
           <div className="mt-4 flex gap-2">
-            <ButtonLink href={supplier ? "/approvals" : "/catalog"}>
-              {supplier ? t("reviewApprovals") : t("reserveProduct")}
-            </ButtonLink>
+            <ButtonLink href={links.cta.href}>{t(links.cta.key)}</ButtonLink>
           </div>
         </div>
 
@@ -76,7 +75,7 @@ export default async function DashboardPage() {
           }
           pillTone={unpriced ? "warn" : "good"}
           seed={1}
-          href={stockHref}
+          href={links.stock}
         />
       </div>
 
@@ -91,7 +90,7 @@ export default async function DashboardPage() {
               percent: pct(totals.reserved, totals.total),
             })}
             seed={2}
-            href={requestsHref}
+            href={links.requests}
           />
           <Kpi
             icon="✅"
@@ -101,7 +100,7 @@ export default async function DashboardPage() {
             pill={totals.free < 0 ? t("oversold") : t("availableNow")}
             pillTone={totals.free < 0 ? "hot" : "good"}
             seed={4}
-            href={stockHref}
+            href={links.stock}
           />
           <Kpi
             icon="⏳"
@@ -111,7 +110,7 @@ export default async function DashboardPage() {
             pill={t("requestsWaiting", { count: counts.pending })}
             pillTone={counts.pending > 0 ? "warn" : "good"}
             seed={3}
-            href={requestsHref}
+            href={links.requests}
           />
         </div>
 
@@ -144,7 +143,9 @@ export default async function DashboardPage() {
             <SectionTitle>{t("summary")}</SectionTitle>
             <Row label={t("skusListed")}>{n(totals.skus)}</Row>
             <Row label={t("approvedRequests")}>{n(counts.approved)}</Row>
-            <Row label={supplier ? t("waitingOnYou") : t("waitingOnSupplier")}>
+            <Row
+              label={supplierView ? t("waitingOnYou") : t("waitingOnSupplier")}
+            >
               {n(counts.pending)}
             </Row>
             <Row label={t("awaitingTransferValue")}>
