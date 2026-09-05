@@ -14,10 +14,157 @@ export type Database = {
   }
   public: {
     Tables: {
+      arrival_edits: {
+        Row: {
+          arrival_id: string
+          created_at: string
+          edited_by: string | null
+          id: string
+          new_arrived_on: string | null
+          new_note: string | null
+          new_qty: number
+          new_reference: string | null
+          old_arrived_on: string | null
+          old_note: string | null
+          old_qty: number
+          old_reference: string | null
+          product_id: string
+          reason: string | null
+          request_id: string
+        }
+        Insert: {
+          arrival_id: string
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          new_arrived_on?: string | null
+          new_note?: string | null
+          new_qty: number
+          new_reference?: string | null
+          old_arrived_on?: string | null
+          old_note?: string | null
+          old_qty: number
+          old_reference?: string | null
+          product_id: string
+          reason?: string | null
+          request_id: string
+        }
+        Update: {
+          arrival_id?: string
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          new_arrived_on?: string | null
+          new_note?: string | null
+          new_qty?: number
+          new_reference?: string | null
+          old_arrived_on?: string | null
+          old_note?: string | null
+          old_qty?: number
+          old_reference?: string | null
+          product_id?: string
+          reason?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrival_edits_arrival_id_fkey"
+            columns: ["arrival_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["arrival_id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_arrival_id_fkey"
+            columns: ["arrival_id"]
+            isOneToOne: false
+            referencedRelation: "arrivals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "po_settlement"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "transfer_queue"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["po_id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "po_settlement"
+            referencedColumns: ["po_id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "reserve_request_dispatch"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "reserve_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "transfer_queue"
+            referencedColumns: ["po_id"]
+          },
+        ]
+      }
       arrivals: {
         Row: {
           arrived_on: string
           created_at: string
+          edited_count: number
           id: string
           note: string | null
           product_id: string
@@ -28,10 +175,12 @@ export type Database = {
           supplier_id: string
           unit_cost: number | null
           value: number | null
+          voided: boolean
         }
         Insert: {
           arrived_on?: string
           created_at?: string
+          edited_count?: number
           id?: string
           note?: string | null
           product_id: string
@@ -42,10 +191,12 @@ export type Database = {
           supplier_id: string
           unit_cost?: number | null
           value?: number | null
+          voided?: boolean
         }
         Update: {
           arrived_on?: string
           created_at?: string
+          edited_count?: number
           id?: string
           note?: string | null
           product_id?: string
@@ -56,8 +207,16 @@ export type Database = {
           supplier_id?: string
           unit_cost?: number | null
           value?: number | null
+          voided?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "arrivals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["product_id"]
+          },
           {
             foreignKeyName: "arrivals_product_id_fkey"
             columns: ["product_id"]
@@ -92,6 +251,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrivals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["po_id"]
           },
           {
             foreignKeyName: "arrivals_request_id_fkey"
@@ -324,6 +490,13 @@ export type Database = {
             foreignKeyName: "reserve_requests_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "reserve_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "po_settlement"
             referencedColumns: ["product_id"]
           },
@@ -417,6 +590,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "stock_movements"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "settlements_product_id_fkey"
@@ -530,6 +710,13 @@ export type Database = {
             foreignKeyName: "stock_movements_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "po_settlement"
             referencedColumns: ["product_id"]
           },
@@ -553,6 +740,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "transfer_queue"
             referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["po_id"]
           },
           {
             foreignKeyName: "stock_movements_request_id_fkey"
@@ -672,6 +866,71 @@ export type Database = {
       }
     }
     Views: {
+      arrival_edit_log: {
+        Row: {
+          arrival_id: string | null
+          created_at: string | null
+          delta: number | null
+          edited_by_name: string | null
+          id: string | null
+          new_arrived_on: string | null
+          new_note: string | null
+          new_qty: number | null
+          new_reference: string | null
+          old_arrived_on: string | null
+          old_note: string | null
+          old_qty: number | null
+          old_reference: string | null
+          po_ref: string | null
+          product_name: string | null
+          reason: string | null
+          sku: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrival_edits_arrival_id_fkey"
+            columns: ["arrival_id"]
+            isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["arrival_id"]
+          },
+          {
+            foreignKeyName: "arrival_edits_arrival_id_fkey"
+            columns: ["arrival_id"]
+            isOneToOne: false
+            referencedRelation: "arrivals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arrival_log: {
+        Row: {
+          arrival_id: string | null
+          arrived_on: string | null
+          edited_count: number | null
+          image_url: string | null
+          note: string | null
+          po_id: string | null
+          po_ref: string | null
+          product_id: string | null
+          product_name: string | null
+          qty: number | null
+          qty_approved: number | null
+          qty_arrived: number | null
+          qty_locked_by_dispatch: number | null
+          qty_still_awaiting: number | null
+          received_by_name: string | null
+          recorded_at: string | null
+          reference: string | null
+          sku: string | null
+          supplier_name: string | null
+          unit_cost: number | null
+          value: number | null
+          voided: boolean | null
+          warehouse_code: string | null
+        }
+        Relationships: []
+      }
       po_settlement: {
         Row: {
           awaiting_transfer_value: number | null
@@ -849,6 +1108,13 @@ export type Database = {
             foreignKeyName: "reserve_requests_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "arrival_log"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "reserve_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "po_settlement"
             referencedColumns: ["product_id"]
           },
@@ -922,6 +1188,38 @@ export type Database = {
       }
     }
     Functions: {
+      amend_arrival: {
+        Args: {
+          p_arrival_id: string
+          p_arrived_on?: string
+          p_note?: string
+          p_qty?: number
+          p_reason?: string
+          p_reference?: string
+        }
+        Returns: {
+          arrived_on: string
+          created_at: string
+          edited_count: number
+          id: string
+          note: string | null
+          product_id: string
+          qty: number
+          received_by: string | null
+          reference: string | null
+          request_id: string
+          supplier_id: string
+          unit_cost: number | null
+          value: number | null
+          voided: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "arrivals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       approve_reserve_request: {
         Args: { p_note?: string; p_qty?: number; p_request_id: string }
         Returns: {

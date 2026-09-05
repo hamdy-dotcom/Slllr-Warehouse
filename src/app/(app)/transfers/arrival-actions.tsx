@@ -6,7 +6,13 @@ import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Muted } from "@/components/ui/card";
-import { Field, FieldError, Input, Note, Textarea } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  Input,
+  Note,
+  Textarea,
+} from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { n } from "@/lib/format";
@@ -160,7 +166,9 @@ function PartialDialog({
                     po_id: line.po_id,
                     qty: wanted,
                     arrived_on: date,
-                    ...(reference.trim() ? { reference: reference.trim() } : {}),
+                    ...(reference.trim()
+                      ? { reference: reference.trim() }
+                      : {}),
                     ...(note.trim() ? { note: note.trim() } : {}),
                   },
                 ]
@@ -201,7 +209,11 @@ function PartialDialog({
           />
         </Field>
 
-        <Field label={t("partialNote")} htmlFor="arrival-note" hint={tc("optional")}>
+        <Field
+          label={t("partialNote")}
+          htmlFor="arrival-note"
+          hint={tc("optional")}
+        >
           <Textarea
             id="arrival-note"
             rows={2}
@@ -248,11 +260,7 @@ function Submit({
   const { pending } = useFormStatus();
 
   return (
-    <Button
-      type="submit"
-      className={className}
-      disabled={pending || disabled}
-    >
+    <Button type="submit" className={className} disabled={pending || disabled}>
       {pending ? busy : label}
     </Button>
   );

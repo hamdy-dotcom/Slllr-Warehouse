@@ -15,7 +15,11 @@ export type ArrivalRow = {
   note?: string;
 };
 
-export type ArrivalResult = { po_ref: string | null; ok: boolean; message: string };
+export type ArrivalResult = {
+  po_ref: string | null;
+  ok: boolean;
+  message: string;
+};
 
 export type ArrivalState = {
   error?: string;
@@ -95,4 +99,73 @@ export async function recordArrivals(
     savedAt: Date.now(),
     results: (data ?? []).map((row) => ({ ...row, message: say(row.message) })),
   };
+}
+
+export type AmendState = {
+  error?: string;
+  savedAt?: number;
+  voided?: boolean;
+};
+
+/**
+ * Corrects one recorded arrival, or voids it by setting the quantity to zero.
+ *
+ * `amend_arrival` owns the whole correction: it moves `qty_arrived`, puts the
+ * difference back on or takes it off the supplier's shelf, and writes a
+ * balancing `transfer_riyadh` movement rather than editing the original one —
+ * the ledger gains a row, it never loses one. Voiding is a state change, so
+ * the arrival and its history survive it.
+ *
+ * The three limits the RPC enforces are mirrored into the dialog so they are
+ * explained before submitting; they are still checked here, because a dialog
+ * is a convenience and the RPC is the rule.
+ */
+export async function amendArrival(
+  _previous: AmendState,
+  formData: FormData,
+): Promise<AmendState> {
+  const [t, say] = await Promise.all([
+    getTranslations("errors"),
+    rpcTranslator(),
+  ]);
+
+  const arrivalId = String(formData.get("arrival_id") ?? "");
+  const rawQty = String(formData.get("qty") ?? "").trim();
+  const arrivedOn = String(formData.get("arrived_on") ?? "").trim();
+  const reference = String(formData.get("reference") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!arrivalId) return { error: t("cannotRead") };
+
+  const qty = Number(rawQty);
+  if (rawQty === "" || !Number.isInteger(qty) || qty < 0) {
+    return { error: t("qtyWholeNumber") };
+  }
+  if (!ISO_DATE.test(arrivedOn)) return { error: t("dateNeeded") };
+  if (reason === "") return { error: t("reasonNeeded") };
+
+  const profile = await requireProfile();
+  if (profile.role !== "warehouse" && profile.role !== "admin") {
+    return { error: t("onlyWarehouseArrivals") };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("amend_arrival", {
+    p_arrival_id: arrivalId,
+    p_qty: qty,
+    p_arrived_on: arrivedOn,
+    // The RPC coalesces a null argument to the value already stored, so a
+    // field the operator cleared has to travel as an empty string or the old
+    // text silently survives the edit.
+    p_reference: reference,
+    p_note: note,
+    p_reason: reason,
+  });
+
+  if (error) return { error: say(error.message) };
+
+  revalidateAll();
+
+  return { savedAt: Date.now(), voided: qty === 0 };
 }

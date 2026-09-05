@@ -4,7 +4,9 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
 import { requireProfile } from "@/lib/auth";
+import { arrivalEdits, listArrivalLog } from "@/lib/data/arrivals";
 import { listTransferQueue } from "@/lib/data/transfers";
+import { arrivalTotals, matchesArrivalFilter } from "@/lib/arrivals";
 import { formatDate, n } from "@/lib/format";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
@@ -14,7 +16,9 @@ import {
   transferTotals,
 } from "@/lib/transfers";
 import { ArrivalActions } from "./arrival-actions";
+import { ArrivalFilters } from "./arrival-filters";
 import { BulkArrivalsButton } from "./bulk-dialog";
+import { RecordedArrivals } from "./recorded-arrivals";
 import { TransferFilters } from "./transfer-filters";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,6 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
 const TH =
   "px-[10px] pb-[10px] text-start text-th font-normal uppercase tracking-[0.4px] text-ink-2";
 const TD = "border-t border-line px-[10px] py-[12px] align-middle";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const STATUS_STYLE: Record<string, string> = {
   "not started": "bg-neutral-soft text-ink-2",
@@ -42,9 +48,16 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function TransfersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    q?: string;
+    from?: string;
+    to?: string;
+    aq?: string;
+    edited?: string;
+  }>;
 }) {
-  await requireProfile();
+  const profile = await requireProfile();
   const params = await searchParams;
 
   const filter = {
@@ -52,12 +65,30 @@ export default async function TransfersPage({
     q: params.q || undefined,
   };
 
-  const [t, tc, locale, all] = await Promise.all([
+  // Its own keys, so the queue's search and the arrivals search can both be
+  // set at once without one clearing the other.
+  const arrivalFilter = {
+    from: ISO_DATE.test(params.from ?? "") ? params.from : undefined,
+    to: ISO_DATE.test(params.to ?? "") ? params.to : undefined,
+    q: params.aq || undefined,
+    editedOnly: params.edited === "1",
+  };
+
+  const [t, ta, tc, locale, all, arrivals, edits] = await Promise.all([
     getTranslations("transfers"),
+    getTranslations("arrivals"),
     getTranslations("common"),
     getLocale(),
     listTransferQueue(),
+    listArrivalLog(),
+    arrivalEdits(),
   ]);
+
+  const visibleArrivals = arrivals.filter((row) =>
+    matchesArrivalFilter(row, arrivalFilter),
+  );
+  const arrivalSums = arrivalTotals(visibleArrivals);
+  const canAmend = profile.role === "warehouse" || profile.role === "admin";
 
   const lines = await listTransferQueue(filter);
   const totals = transferTotals(lines);
@@ -193,6 +224,48 @@ export default async function TransfersPage({
             </table>
           </div>
         )}
+      </Card>
+
+      <div className="mt-[22px] mb-[18px] flex flex-wrap items-start justify-between gap-[14px]">
+        <div>
+          <h2 className="text-title font-medium">{ta("title")}</h2>
+          <Muted className="mt-[6px] max-w-[560px]">{ta("lede")}</Muted>
+        </div>
+
+        <div className="text-end">
+          <div className="text-label text-ink-2">{ta("totalRecorded")}</div>
+          <div className="mt-[2px] text-kpi font-medium tabular-nums">
+            {money(arrivalSums.value)}
+          </div>
+          <div className="text-meta text-ink-3">
+            {tc("unitsCount", { count: arrivalSums.qty })}
+          </div>
+        </div>
+      </div>
+
+      <ArrivalFilters
+        from={arrivalFilter.from}
+        to={arrivalFilter.to}
+        q={arrivalFilter.q}
+        editedOnly={arrivalFilter.editedOnly}
+      />
+
+      <Card>
+        <SectionTitle>{ta("title")}</SectionTitle>
+        <Muted className="mb-4">
+          {ta("summary", {
+            rows: arrivalSums.rows,
+            edited: n(arrivalSums.edited),
+            voided: n(arrivalSums.voided),
+          })}
+        </Muted>
+
+        <RecordedArrivals
+          rows={visibleArrivals}
+          edits={Object.fromEntries(edits)}
+          canEdit={canAmend}
+          emptyMessage={arrivals.length === 0 ? ta("empty") : ta("noMatch")}
+        />
       </Card>
     </>
   );

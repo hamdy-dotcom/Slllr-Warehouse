@@ -30,6 +30,14 @@ import { money } from "@/lib/money";
  *                            `Name, SKU, and warehouse code are all required`
  *   release_reserved_qty     `released 30 units back across 2 POs`
  *                            `Only 15 units are still reserved on this product`
+ *   amend_arrival            `a reason is required to edit an arrival`
+ *                            `this PO only has 300 units awaiting transfer, so
+ *                             400 cannot be recorded`
+ *                            `40 units from this arrival are already
+ *                             dispatched, so it cannot go below 40`
+ *                            `quantity cannot be negative`
+ *                            `only warehouse operations can edit an arrival`
+ *                            `arrival not found`
  *   record_settlements       `SKU not found`
  *                            `Only 3 units are in progress for this SKU`
  *                            `delivered 100 units, SAR 25925.00`
@@ -146,6 +154,32 @@ const PATTERNS: {
     test: /^Only ([\d,]+) units are in progress for this SKU$/,
     key: "onlyInProgress",
     params: (m) => ({ available: m[1] }),
+  },
+  {
+    test: /^a reason is required to edit an arrival$/,
+    key: "amendReasonRequired",
+  },
+  {
+    test: /^this PO only has ([\d,]+) units awaiting transfer, so ([\d,]+) cannot be recorded$/,
+    key: "amendAboveCeiling",
+    params: (m) => ({ available: m[1], asked: m[2] }),
+  },
+  {
+    test: /^([\d,]+) units from this arrival are already dispatched, so it cannot go below ([\d,]+)$/,
+    key: "amendBelowFloor",
+    params: (m) => ({ dispatched: m[1], floor: m[2] }),
+  },
+  {
+    test: /^quantity cannot be negative$/,
+    key: "amendNegative",
+  },
+  {
+    test: /^only warehouse operations can edit an arrival$/,
+    key: "amendNotAllowed",
+  },
+  {
+    test: /^arrival not found$/,
+    key: "amendNotFound",
   },
 ];
 

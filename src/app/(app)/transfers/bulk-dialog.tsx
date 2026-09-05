@@ -32,7 +32,11 @@ export function BulkArrivalsButton({
         {t("bulkAction")}
       </Button>
       {open ? (
-        <BulkDialog lines={lines} today={today} onClose={() => setOpen(false)} />
+        <BulkDialog
+          lines={lines}
+          today={today}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </>
   );
