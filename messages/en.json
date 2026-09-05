@@ -714,7 +714,6 @@
     "allowedRange": "Anywhere from {min} to {max} units.",
     "floorWhy": "{count} already dispatched from this arrival, so it cannot go lower.",
     "ceilingWhy": "The PO has {count} more awaiting transfer, so it cannot go higher.",
-    "shelfWhy": "The supplier's shelf holds {count}, which caps the raise before the PO does.",
     "voidWhy": "Setting it to 0 voids this arrival. The row and its history stay.",
     "belowFloor": "Below the {min} already dispatched.",
     "aboveCeiling": "Above the {max} this PO and shelf allow.",

@@ -6,29 +6,20 @@ import { createClient } from "@/lib/supabase/server";
 /**
  * Every arrival the signed-in profile may see, newest first.
  *
- * `arrival_log` carries everything the table renders except what the
- * supplier's shelf still holds, which caps how far an arrival may be raised.
- * That comes from `product_stock` in the same round trip; RLS scopes both.
+ * `arrival_log` carries everything the table and the edit dialog need. The
+ * supplier's shelf is deliberately not read alongside it: the shelf can never
+ * hold less than what is awaiting transfer, so it never narrows the editable
+ * range — see `editRange`.
  */
 export async function listArrivalLog(): Promise<ArrivalRow[]> {
   const supabase = await createClient();
 
-  const [{ data, error }, shelf] = await Promise.all([
-    supabase
-      .from("arrival_log")
-      .select("*")
-      .order("recorded_at", { ascending: false }),
-    supabase.from("product_stock").select("id, total_qty"),
-  ]);
+  const { data, error } = await supabase
+    .from("arrival_log")
+    .select("*")
+    .order("recorded_at", { ascending: false });
 
   if (error) throw new Error(`Could not load arrivals: ${error.message}`);
-  if (shelf.error) {
-    throw new Error(`Could not load the shelf: ${shelf.error.message}`);
-  }
-
-  const held = new Map(
-    (shelf.data ?? []).map((row) => [row.id as string, row.total_qty ?? 0]),
-  );
 
   return (data ?? []).map((row) => ({
     arrival_id: row.arrival_id as string,
@@ -54,7 +45,6 @@ export async function listArrivalLog(): Promise<ArrivalRow[]> {
     qty_still_awaiting: row.qty_still_awaiting ?? 0,
     qty_locked_by_dispatch: row.qty_locked_by_dispatch ?? 0,
     received_by_name: row.received_by_name,
-    shelf_qty: held.get(row.product_id as string) ?? 0,
   }));
 }
 

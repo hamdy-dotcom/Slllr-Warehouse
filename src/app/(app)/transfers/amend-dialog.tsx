@@ -105,11 +105,7 @@ function AmendDialog({
           {range.min > 0 ? (
             <li>{t("floorWhy", { count: n(range.min) })}</li>
           ) : null}
-          {range.cappedByShelf ? (
-            <li>{t("shelfWhy", { count: n(row.shelf_qty) })}</li>
-          ) : (
-            <li>{t("ceilingWhy", { count: n(row.qty_still_awaiting) })}</li>
-          )}
+          <li>{t("ceilingWhy", { count: n(row.qty_still_awaiting) })}</li>
           {range.min === 0 ? <li>{t("voidWhy")}</li> : null}
         </ul>
       </Note>

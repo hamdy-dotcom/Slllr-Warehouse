@@ -28,12 +28,6 @@ export type ArrivalRow = {
   qty_still_awaiting: number;
   qty_locked_by_dispatch: number;
   received_by_name: string | null;
-  /**
-   * What the supplier's shelf still holds for this product. Raising an
-   * arrival takes the difference off that shelf, so it caps the raise — and
-   * it is the one figure `arrival_log` does not carry.
-   */
-  shelf_qty: number;
 };
 
 /** One row of `arrival_edit_log`. */
@@ -57,32 +51,36 @@ export type ArrivalEdit = {
 /**
  * How far an arrival may be edited, and which rule sets each end.
  *
- * All three limits are the RPC's, mirrored here so the dialog can say what is
+ * Two limits, both the RPC's, mirrored here so the dialog can say what is
  * allowed before anything is submitted rather than after it is refused:
  *
  *   floor    units already dispatched from this arrival cannot be un-arrived
  *   ceiling  the PO cannot receive more than it still has awaiting transfer
- *   shelf    raising takes the difference off the supplier's shelf, so the
- *            shelf caps the raise even when the PO would allow it
  *
- * `cappedByShelf` says the shelf is the binding limit rather than the PO, so
- * the dialog can explain the real reason.
+ * `amend_arrival` guards a third rule — raising takes the difference off the
+ * supplier's shelf, so the shelf caps the raise. It is deliberately not
+ * mirrored, because the state it guards cannot occur: every path that lowers
+ * `products.total_qty` refuses to take it below what is awaiting transfer, so
+ *
+ *     shelf >= product-wide awaiting >= this PO's awaiting
+ *
+ * always holds, and the shelf term is never the smaller of the two. Probed on
+ * a throwaway product: a direct update and `bulk_update_stock` both refuse
+ * ("Cannot go below the 90 units awaiting transfer to Sllr"), and raising an
+ * arrival to the PO ceiling lands the shelf on exactly 0. A `min()` against
+ * the shelf here would be arithmetic that can never change the answer.
  */
 export type EditRange = {
   min: number;
   max: number;
-  cappedByShelf: boolean;
 };
 
 export function editRange(row: ArrivalRow): EditRange {
-  const headroom = Math.min(row.qty_still_awaiting, Math.max(row.shelf_qty, 0));
-
   return {
     min: row.qty_locked_by_dispatch,
     // A floor above the ceiling should be impossible, but clamping keeps the
     // dialog from rendering a backwards range if the data ever disagrees.
-    max: Math.max(row.qty + headroom, row.qty_locked_by_dispatch),
-    cappedByShelf: row.shelf_qty < row.qty_still_awaiting,
+    max: Math.max(row.qty + row.qty_still_awaiting, row.qty_locked_by_dispatch),
   };
 }
 
