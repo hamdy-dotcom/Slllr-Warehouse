@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import { ProductThumb } from "@/components/product-thumb";
 import { StockBar } from "@/components/ui/stock-bar";
 import { n } from "@/lib/format";
-import { lineValue, money, unitCost } from "@/lib/money";
+import { money, unitCost } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 
 /**
@@ -99,12 +99,12 @@ export function ProductCard({
         <span>{t("reservedValue")}</span>
         <b
           className={
-            product.unit_cost === null
+            product.awaiting_transfer_value === null
               ? "font-normal text-ink-3"
               : "font-medium text-orange"
           }
         >
-          {money(lineValue(product.reserved_qty, product.unit_cost))}
+          {money(product.awaiting_transfer_value)}
         </b>
       </div>
 

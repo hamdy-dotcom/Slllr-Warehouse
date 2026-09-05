@@ -2,7 +2,7 @@
  * Pure shelf vocabulary — no database access, so both the server pages and the
  * client toolbar can import it.
  */
-import { rollValue, type ValueRoll } from "@/lib/money";
+import { rollAmount, rollValue, type ValueRoll } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 
 export type ShelfFilter = "all" | "low" | "reserved";
@@ -72,8 +72,18 @@ export function shelfValues(rows: ProductStock[]): ShelfValues {
   const cost = (row: ProductStock) => row.unit_cost;
 
   return {
+    // What the shelf is worth today, unreserved units included. The one roll
+    // that is rightly priced at the product's current cost.
     stock: rollValue(rows, (row) => row.total_qty, cost),
-    reserved: rollValue(rows, (row) => row.reserved_qty, cost),
+    // Approved and standing: worth what was agreed, so it comes from the PO
+    // rather than from today's price.
+    reserved: rollAmount(
+      rows,
+      (row) => row.reserved_qty,
+      (row) => row.awaiting_transfer_value,
+    ),
+    // Still only a request — nothing has been agreed to price it at yet, so
+    // today's cost is the only honest basis.
     pending: rollValue(rows, (row) => row.pending_qty, cost),
     free: rollValue(rows, (row) => row.free_qty, cost),
   };

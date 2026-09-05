@@ -85,6 +85,38 @@ export function rollValue<T>(
 }
 
 /**
+ * A rolled-up value where each row already carries its own amount.
+ *
+ * The counterpart to `rollValue` for figures the database has priced for us —
+ * a PO pool valued at the cost agreed when it was approved, rather than at
+ * whatever the product costs today. A row counts as unpriced when it has
+ * quantity but no amount; a row with no quantity is simply not in the roll.
+ */
+export function rollAmount<T>(
+  rows: T[],
+  qtyOf: (row: T) => number,
+  amountOf: (row: T) => number | null | undefined,
+): ValueRoll {
+  return rows.reduce<ValueRoll>(
+    (acc, row) => {
+      if (qtyOf(row) === 0) return acc;
+
+      const amount = amountOf(row);
+      if (amount === null || amount === undefined) {
+        return { ...acc, unpriced: acc.unpriced + 1 };
+      }
+
+      return {
+        total: acc.total + amount,
+        priced: acc.priced + 1,
+        unpriced: acc.unpriced,
+      };
+    },
+    { total: 0, priced: 0, unpriced: 0 },
+  );
+}
+
+/**
  * How many rows a value could not account for, or null when it accounted for
  * all of them. The caveat a screen prints from it is a translated string, so
  * the count is what crosses out of here.

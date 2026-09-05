@@ -1,6 +1,6 @@
 import "server-only";
 
-import { rollValue, type ValueRoll } from "@/lib/money";
+import { rollAmount, rollValue, type ValueRoll } from "@/lib/money";
 import type { Database } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductStock, RequestDispatch } from "@/lib/types";
@@ -104,7 +104,9 @@ export async function listMyRequests(): Promise<RequestWithStock[]> {
  * longer a correction — it is so that all five parts of a row come from one
  * view and cannot disagree with each other mid-write.
  */
-async function withLivePool(rows: RequestDispatch[]): Promise<RequestDispatch[]> {
+async function withLivePool(
+  rows: RequestDispatch[],
+): Promise<RequestDispatch[]> {
   if (rows.length === 0) return rows;
 
   const supabase = await createClient();
@@ -250,7 +252,7 @@ export async function requestValues(): Promise<RequestValues> {
       // still owes the transfer — approved, not yet moved. Custody is what
       // Sllr actually has: arrived in Riyadh and not yet delivered.
       .select(
-        "qty_awaiting_transfer, qty_in_warehouse, qty_out_for_delivery, unit_cost",
+        "qty_awaiting_transfer, qty_in_warehouse, qty_out_for_delivery, awaiting_transfer_value, in_warehouse_value, out_for_delivery_value",
       )
       .eq("request_status", "approved"),
     supabase
@@ -268,23 +270,28 @@ export async function requestValues(): Promise<RequestValues> {
 
   return {
     // Awaiting transfer: approved but still standing on the supplier's shelf.
-    held: rollValue(
+    // The view has already priced each pool at the PO's agreed cost, so these
+    // are its own figures rather than a quantity re-multiplied here.
+    held: rollAmount(
       held.data ?? [],
       (row) => row.qty_awaiting_transfer ?? 0,
-      (row) => row.unit_cost,
+      (row) => row.awaiting_transfer_value,
     ),
     // Sitting in the Riyadh warehouse, ready to dispatch.
-    riyadh: rollValue(
+    riyadh: rollAmount(
       held.data ?? [],
       (row) => row.qty_in_warehouse ?? 0,
-      (row) => row.unit_cost,
+      (row) => row.in_warehouse_value,
     ),
     // In Sllr's hands: in the Riyadh warehouse or already out with a
     // customer. Delivered units have been settled and are no longer custody.
-    custody: rollValue(
+    custody: rollAmount(
       held.data ?? [],
       (row) => (row.qty_in_warehouse ?? 0) + (row.qty_out_for_delivery ?? 0),
-      (row) => row.unit_cost,
+      (row) =>
+        row.in_warehouse_value === null || row.out_for_delivery_value === null
+          ? null
+          : row.in_warehouse_value + row.out_for_delivery_value,
     ),
     asked: rollValue(
       asked.data ?? [],

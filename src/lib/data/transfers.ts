@@ -80,26 +80,50 @@ export type WarehouseStock = {
 /**
  * The three places a unit can be from the warehouse's point of view.
  *
- * In stock and out for delivery come off `product_stock`, which already rolls
- * both up per product. Upcoming is the transfer queue rolled up the same way:
- * approved by a supplier, not yet moved, so it is not warehouse stock yet but
- * it is what the warehouse should expect.
+ * In stock and out for delivery come off `product_stock` for their counts and
+ * off `po_settlement` for their value — a unit in the warehouse is worth what
+ * was agreed when its PO was approved, not what the product is priced at
+ * today. Upcoming is the transfer queue rolled up the same way: approved by a
+ * supplier, not yet moved, so it is not warehouse stock yet but it is what the
+ * warehouse should expect.
  */
 export async function warehouseStock(): Promise<WarehouseStock> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("product_stock")
-    .select(
-      "id, sku, name, image_url, riyadh_qty, riyadh_value, in_progress_qty, in_progress_value",
-    )
-    .order("sku");
+  const [{ data, error }, held] = await Promise.all([
+    supabase
+      .from("product_stock")
+      .select("id, sku, name, image_url, riyadh_qty, in_progress_qty")
+      .order("sku"),
+    supabase
+      .from("po_settlement")
+      .select("product_id, in_warehouse_value, out_for_delivery_value")
+      .eq("request_status", "approved"),
+  ]);
 
   if (error) {
     throw new Error(`Could not load warehouse stock: ${error.message}`);
   }
+  if (held.error) {
+    throw new Error(`Could not value warehouse stock: ${held.error.message}`);
+  }
 
   const rows = data ?? [];
+
+  const inWarehouse = new Map<string, number>();
+  const outForDelivery = new Map<string, number>();
+  for (const po of held.data ?? []) {
+    const id = po.product_id;
+    if (!id) continue;
+    inWarehouse.set(
+      id,
+      (inWarehouse.get(id) ?? 0) + (po.in_warehouse_value ?? 0),
+    );
+    outForDelivery.set(
+      id,
+      (outForDelivery.get(id) ?? 0) + (po.out_for_delivery_value ?? 0),
+    );
+  }
   const line = (
     row: (typeof rows)[number],
     qty: number | null,
@@ -134,10 +158,18 @@ export async function warehouseStock(): Promise<WarehouseStock> {
   return {
     inStock: rows
       .filter((row) => (row.riyadh_qty ?? 0) > 0)
-      .map((row) => line(row, row.riyadh_qty, row.riyadh_value)),
+      .map((row) =>
+        line(row, row.riyadh_qty, inWarehouse.get(row.id as string) ?? 0),
+      ),
     outForDelivery: rows
       .filter((row) => (row.in_progress_qty ?? 0) > 0)
-      .map((row) => line(row, row.in_progress_qty, row.in_progress_value)),
+      .map((row) =>
+        line(
+          row,
+          row.in_progress_qty,
+          outForDelivery.get(row.id as string) ?? 0,
+        ),
+      ),
     upcoming: [...bySku.values()].sort((a, b) => a.sku.localeCompare(b.sku)),
   };
 }

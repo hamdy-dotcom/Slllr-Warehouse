@@ -73,8 +73,23 @@ export type ProductStock = Product & {
   /**
    * `total_qty * unit_cost`, straight from the view. Null when the product
    * has no cost — "not priced yet" is a real state, not a zero.
+   *
+   * The only figure on this type priced at what the product costs today.
+   * It answers "what is the shelf worth", which includes units nobody has
+   * reserved and so has no agreed price to fall back on. Every pool value
+   * below is priced at the cost agreed when its PO was approved.
    */
   stock_value: number | null;
+  /**
+   * The three PO pools, valued from `po_settlement` rather than from
+   * `qty * unit_cost`.
+   *
+   * An approved commitment is worth what was agreed when it was approved.
+   * Re-pricing a product changes `stock_value`; it must not retroactively
+   * change what a standing reservation is worth. Null means the pool is
+   * empty or the PO was never priced — both render as "—", not as zero.
+   */
+  awaiting_transfer_value: number | null;
   /** Arrived in the Riyadh warehouse and not yet dispatched. */
   riyadh_qty: number;
   riyadh_value: number | null;

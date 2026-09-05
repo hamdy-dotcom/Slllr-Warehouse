@@ -16,7 +16,7 @@ import { Modal } from "@/components/ui/modal";
 import { Muted } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { n } from "@/lib/format";
-import { CURRENCY, lineValue, money } from "@/lib/money";
+import { CURRENCY, money } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 import {
   addProduct,
@@ -255,9 +255,7 @@ function ProductDialog({
                   // What Sllr actually holds of this product now, which is
                   // what has arrived in Riyadh — not what is still waiting
                   // here to be collected.
-                  value: money(
-                    lineValue(product.riyadh_qty, product.unit_cost),
-                  ),
+                  value: money(product.riyadh_value),
                   b: (chunks) => <b>{chunks}</b>,
                 })}
           </Note>

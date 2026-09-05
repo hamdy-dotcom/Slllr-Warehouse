@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 
 import { ProductMini } from "@/components/product-thumb";
 import { n } from "@/lib/format";
-import { lineValue, money, unitCost } from "@/lib/money";
+import { money, unitCost } from "@/lib/money";
 import type { ProductStock } from "@/lib/types";
 
 const TH =
@@ -123,12 +123,12 @@ export function ProductTable({
 
               <td
                 className={`${TD} tabular-nums ${
-                  product.unit_cost === null
+                  product.awaiting_transfer_value === null
                     ? "text-ink-3"
                     : "font-medium text-orange"
                 }`}
               >
-                {money(lineValue(product.reserved_qty, product.unit_cost))}
+                {money(product.awaiting_transfer_value)}
               </td>
 
               {trailing.map((column, index) => (
