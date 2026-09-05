@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { canWriteShelf } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/lib/types";
 
@@ -66,6 +67,9 @@ export async function requireSupplier(): Promise<
 > {
   const profile = await requireProfile();
 
+  // The same predicate the pages use to decide whether to draw the control,
+  // so the two can never disagree about who may write.
+  if (!canWriteShelf(profile.role)) redirect("/dashboard");
   if (!profile.supplier_id) redirect("/dashboard");
 
   return profile as SessionProfile & { supplier_id: string };

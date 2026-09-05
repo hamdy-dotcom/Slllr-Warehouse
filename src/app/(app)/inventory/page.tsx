@@ -8,6 +8,7 @@ import { ValueSummary } from "@/components/value-summary";
 import { ViewToggle } from "@/components/view-toggle";
 import { Card, Empty, Muted } from "@/components/ui/card";
 import { requireSupplierView } from "@/lib/auth";
+import { canWriteShelf } from "@/lib/routes";
 import { listProductStock } from "@/lib/data/products";
 import { applyShelfFilter, isShelfFilter, type ShelfFilter } from "@/lib/shelf";
 import { relativeTime } from "@/lib/format";
@@ -29,7 +30,11 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ q?: string; filter?: string }>;
 }) {
-  await requireSupplierView();
+  const profile = await requireSupplierView();
+  // Admin reads every shelf but belongs to no supplier, so every write here
+  // would be refused. Draw the page without the controls rather than with
+  // buttons that bounce.
+  const canWrite = canWriteShelf(profile.role);
 
   const { q = "", filter } = await searchParams;
   const active: ShelfFilter = isShelfFilter(filter) ? filter : "all";
@@ -53,9 +58,13 @@ export default async function InventoryPage({
 
       <ShelfToolbar q={q} filter={active}>
         <ViewToggle route={ROUTE} mode={view} />
-        <BulkUpdateButton shelf={shelf} />
-        <AddProductsButton shelf={shelf} />
-        <AddProductButton />
+        {canWrite ? (
+          <>
+            <BulkUpdateButton shelf={shelf} />
+            <AddProductsButton shelf={shelf} />
+            <AddProductButton />
+          </>
+        ) : null}
       </ShelfToolbar>
 
       {visible.length > 0 ? <ValueSummary products={visible} /> : null}
@@ -71,13 +80,19 @@ export default async function InventoryPage({
               key={product.id}
               product={product}
               totalSlot={
-                <InlineQty
-                  sku={product.sku}
-                  totalQty={product.total_qty}
-                  reservedQty={product.reserved_qty}
-                />
+                canWrite ? (
+                  <InlineQty
+                    sku={product.sku}
+                    totalQty={product.total_qty}
+                    reservedQty={product.reserved_qty}
+                  />
+                ) : undefined
               }
-              action={<EditProductButton product={product} fullWidth />}
+              action={
+                canWrite ? (
+                  <EditProductButton product={product} fullWidth />
+                ) : undefined
+              }
             />
           ))}
         </div>
@@ -85,13 +100,17 @@ export default async function InventoryPage({
         <Card>
           <ProductTable
             products={visible}
-            totalCell={(product) => (
-              <InlineQty
-                sku={product.sku}
-                totalQty={product.total_qty}
-                reservedQty={product.reserved_qty}
-              />
-            )}
+            totalCell={
+              canWrite
+                ? (product) => (
+                    <InlineQty
+                      sku={product.sku}
+                      totalQty={product.total_qty}
+                      reservedQty={product.reserved_qty}
+                    />
+                  )
+                : undefined
+            }
             trailing={[
               {
                 header: tc("updated"),
@@ -101,10 +120,16 @@ export default async function InventoryPage({
                   </span>
                 ),
               },
-              {
-                header: "",
-                cell: (product) => <EditProductButton product={product} />,
-              },
+              ...(canWrite
+                ? [
+                    {
+                      header: "",
+                      cell: (product: (typeof visible)[number]) => (
+                        <EditProductButton product={product} />
+                      ),
+                    },
+                  ]
+                : []),
             ]}
           />
         </Card>

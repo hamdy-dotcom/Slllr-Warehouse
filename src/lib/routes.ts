@@ -130,6 +130,25 @@ const COUNTERPART: Partial<Record<AppRole, Record<string, string>>> = {
   },
 };
 
+/**
+ * Whether a role may write to a supplier's own shelf: create or edit a
+ * product, move its quantity, upload its image, paste a bulk update.
+ *
+ * One predicate for two jobs. The page asks it before drawing a control, and
+ * `requireSupplier` asks it before accepting a write, so a button can never
+ * appear for a role the server would turn away — the failure this replaced,
+ * where admin saw Add product and was bounced to the dashboard for clicking
+ * it. Adding a role to this list turns on the controls and the writes
+ * together; adding one anywhere else does neither.
+ *
+ * Belonging to a supplier is still required on top of this: an admin is
+ * refused here by role, and a roleless profile is refused by having no
+ * `supplier_id`.
+ */
+export function canWriteShelf(role: AppRole): boolean {
+  return role === "supplier";
+}
+
 /** The `/dashboard` in `/dashboard/anything`. */
 function section(pathname: string): string {
   const [, first] = pathname.split("/");
@@ -147,6 +166,20 @@ export function canAccess(role: AppRole, pathname: string): boolean {
 
 export function redirectFor(role: AppRole, pathname: string): string {
   return COUNTERPART[role]?.[section(pathname)] ?? HOME;
+}
+
+/**
+ * Every role that may write to a shelf but cannot open the screen it writes
+ * from.
+ *
+ * Empty is the only healthy answer. The reverse direction — a role that sees
+ * a write control it cannot use — is what `canWriteShelf` prevents by
+ * construction, and is checked live against the rendered page.
+ */
+export function shelfWriteProblems(): string[] {
+  return (Object.keys(NAV) as AppRole[])
+    .filter((role) => canWriteShelf(role) && !canAccess(role, "/inventory"))
+    .map((role) => `${role}: may write a shelf but cannot open /inventory`);
 }
 
 /**
