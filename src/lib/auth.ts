@@ -56,9 +56,10 @@ export async function requireProfile(): Promise<SessionProfile> {
 }
 
 /**
- * For pages that act on a supplier's own shelf. The RPCs check ownership
- * against `supplier_id`, so a profile without one has nothing to act on —
- * whatever its role.
+ * For writes against a supplier's own shelf. The RPCs check ownership against
+ * `supplier_id`, and rows are inserted carrying it, so a profile without one
+ * has nothing to act on — admin included. An operator belongs to no supplier
+ * by design, which is exactly why they cannot write on one's behalf.
  */
 export async function requireSupplier(): Promise<
   SessionProfile & { supplier_id: string }
@@ -68,4 +69,22 @@ export async function requireSupplier(): Promise<
   if (!profile.supplier_id) redirect("/dashboard");
 
   return profile as SessionProfile & { supplier_id: string };
+}
+
+/**
+ * For reading a supplier's screens: the shelf, its ledger, its approvals.
+ *
+ * Admin is admitted by role rather than by carrying a `supplier_id`. Giving
+ * an operator one would make them look like they belong to a single supplier
+ * and would quietly scope their reads to it; the RLS policies already assume
+ * admin sees everything and belongs to nobody. `supplier_id` is therefore
+ * still nullable here — use `requireSupplier` where a concrete owner matters.
+ */
+export async function requireSupplierView(): Promise<SessionProfile> {
+  const profile = await requireProfile();
+
+  if (profile.role === "admin") return profile;
+  if (!profile.supplier_id) redirect("/dashboard");
+
+  return profile;
 }

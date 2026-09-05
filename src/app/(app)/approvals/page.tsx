@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
-import { requireSupplier } from "@/lib/auth";
+import { requireSupplierView } from "@/lib/auth";
 import { availableToGrant, listPendingApprovals } from "@/lib/data/requests";
 import { formatDate, n } from "@/lib/format";
 import {
@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ApprovalsPage() {
-  await requireSupplier();
+  await requireSupplierView();
 
   const [t, tc, locale, pending] = await Promise.all([
     getTranslations("approvals"),

@@ -7,7 +7,7 @@ import { ShelfToolbar } from "@/components/shelf-toolbar";
 import { ValueSummary } from "@/components/value-summary";
 import { ViewToggle } from "@/components/view-toggle";
 import { Card, Empty, Muted } from "@/components/ui/card";
-import { requireSupplier } from "@/lib/auth";
+import { requireSupplierView } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
 import { applyShelfFilter, isShelfFilter, type ShelfFilter } from "@/lib/shelf";
 import { relativeTime } from "@/lib/format";
@@ -29,7 +29,7 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ q?: string; filter?: string }>;
 }) {
-  await requireSupplier();
+  await requireSupplierView();
 
   const { q = "", filter } = await searchParams;
   const active: ShelfFilter = isShelfFilter(filter) ? filter : "all";

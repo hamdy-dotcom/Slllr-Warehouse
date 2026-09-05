@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
-import { requireSupplier } from "@/lib/auth";
+import { requireSupplierView } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
 import {
   LEDGER_LIMIT,
@@ -40,7 +40,7 @@ export default async function MovementsPage({
   // A supplier's ledger of its own shelf, so the whole page is gated on
   // having one. Warehouse never reaches this guard: routes.ts turns it away
   // at the middleware and sends it to the transfer queue.
-  await requireSupplier();
+  await requireSupplierView();
 
   const params = await searchParams;
   const direction = isDirection(params.direction)
