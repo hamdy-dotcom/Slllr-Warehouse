@@ -213,9 +213,18 @@ export async function requestCounts(): Promise<RequestCounts> {
   return counts;
 }
 
+/**
+ * An approved quantity now sits in one of several places, and the dashboard
+ * asks about three of them separately. They are rolled from one read so the
+ * three always describe the same instant.
+ */
 export type RequestValues = {
-  /** Approved requests: what Sllr actually holds, at the cost agreed. */
+  /** Approved, still standing on the supplier's shelf. */
   held: ValueRoll;
+  /** Arrived in the Riyadh warehouse, ready to dispatch. */
+  riyadh: ValueRoll;
+  /** In Riyadh or out with a customer — what Sllr holds. */
+  custody: ValueRoll;
   /** Pending requests: what Sllr has asked for, at the cost quoted. */
   asked: ValueRoll;
 };
@@ -237,9 +246,12 @@ export async function requestValues(): Promise<RequestValues> {
   const [held, asked] = await Promise.all([
     supabase
       .from("po_settlement")
-      // Held is what the supplier still owes the transfer: approved units
-      // that have not moved to Riyadh yet.
-      .select("qty_awaiting_transfer, unit_cost")
+      // Two different questions off one read. Held is what the supplier
+      // still owes the transfer — approved, not yet moved. Custody is what
+      // Sllr actually has: arrived in Riyadh and not yet delivered.
+      .select(
+        "qty_awaiting_transfer, qty_in_warehouse, qty_out_for_delivery, unit_cost",
+      )
       .eq("request_status", "approved"),
     supabase
       .from("reserve_request_dispatch")
@@ -255,11 +267,23 @@ export async function requestValues(): Promise<RequestValues> {
   }
 
   return {
-    // Outstanding, not approved: units already dispatched have left the shelf
-    // and are being settled through the wallet, so they are no longer held.
+    // Awaiting transfer: approved but still standing on the supplier's shelf.
     held: rollValue(
       held.data ?? [],
       (row) => row.qty_awaiting_transfer ?? 0,
+      (row) => row.unit_cost,
+    ),
+    // Sitting in the Riyadh warehouse, ready to dispatch.
+    riyadh: rollValue(
+      held.data ?? [],
+      (row) => row.qty_in_warehouse ?? 0,
+      (row) => row.unit_cost,
+    ),
+    // In Sllr's hands: in the Riyadh warehouse or already out with a
+    // customer. Delivered units have been settled and are no longer custody.
+    custody: rollValue(
+      held.data ?? [],
+      (row) => (row.qty_in_warehouse ?? 0) + (row.qty_out_for_delivery ?? 0),
       (row) => row.unit_cost,
     ),
     asked: rollValue(

@@ -26,6 +26,8 @@ export function normaliseStock(row: ProductStockRow): ProductStock {
     pending_qty: row.pending_qty ?? 0,
     free_qty: row.free_qty ?? 0,
     stock_value: row.stock_value,
+    riyadh_qty: row.riyadh_qty ?? 0,
+    riyadh_value: row.riyadh_value,
     in_progress_qty: row.in_progress_qty ?? 0,
     in_progress_value: row.in_progress_value,
   };

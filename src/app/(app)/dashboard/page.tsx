@@ -147,7 +147,11 @@ export default async function DashboardPage() {
             <Row label={supplier ? t("waitingOnYou") : t("waitingOnSupplier")}>
               {n(counts.pending)}
             </Row>
-            <Row label={t("valueInCustody")}>{money(values.held.total)}</Row>
+            <Row label={t("awaitingTransferValue")}>
+              {money(values.held.total)}
+            </Row>
+            <Row label={t("inRiyadh")}>{money(values.riyadh.total)}</Row>
+            <Row label={t("valueInCustody")}>{money(values.custody.total)}</Row>
             {moves ? (
               <>
                 <Row label={t("inboundDays", { days: moves.days })}>

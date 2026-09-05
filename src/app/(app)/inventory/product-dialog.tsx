@@ -252,8 +252,11 @@ function ProductDialog({
             {product.unit_cost === null
               ? null
               : t.rich("custodyNote", {
+                  // What Sllr actually holds of this product now, which is
+                  // what has arrived in Riyadh — not what is still waiting
+                  // here to be collected.
                   value: money(
-                    lineValue(product.reserved_qty, product.unit_cost),
+                    lineValue(product.riyadh_qty, product.unit_cost),
                   ),
                   b: (chunks) => <b>{chunks}</b>,
                 })}

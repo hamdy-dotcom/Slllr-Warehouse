@@ -61,9 +61,10 @@ export type ProductStockRow = Views["product_stock"]["Row"];
 /**
  * A row of `product_stock`, normalised.
  *
- * `reserved_qty` is always `sum(qty_approved) where status = 'approved'` —
- * never stored, never edited. `free_qty` is `total - reserved - pending` and
- * is allowed to go negative.
+ * `reserved_qty` is what is approved and still standing here: units leave it
+ * when the warehouse records them as arrived in Riyadh, which is also when
+ * `total_qty` drops. It is never stored and never edited. `free_qty` is
+ * `total - reserved - pending` and is allowed to go negative.
  */
 export type ProductStock = Product & {
   reserved_qty: number;
@@ -74,7 +75,10 @@ export type ProductStock = Product & {
    * has no cost — "not priced yet" is a real state, not a zero.
    */
   stock_value: number | null;
-  /** Dispatched to Sllr but not yet settled as delivered or returned. */
+  /** Arrived in the Riyadh warehouse and not yet dispatched. */
+  riyadh_qty: number;
+  riyadh_value: number | null;
+  /** Out with a customer, awaiting delivery or return. */
   in_progress_qty: number;
   in_progress_value: number | null;
 };
