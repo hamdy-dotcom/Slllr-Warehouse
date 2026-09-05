@@ -739,13 +739,11 @@ export type Database = {
           id: string | null
           image_url: string | null
           in_progress_qty: number | null
-          in_progress_value: number | null
           is_active: boolean | null
           name: string | null
           pending_qty: number | null
           reserved_qty: number | null
           riyadh_qty: number | null
-          riyadh_value: number | null
           sku: string | null
           stock_value: number | null
           supplier_id: string | null

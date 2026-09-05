@@ -192,25 +192,50 @@ export type InProgressLine = {
   in_progress_value: number;
 };
 
-/** What is dispatched but unsettled, per SKU — the pool a delivery draws from. */
+/**
+ * What is dispatched but unsettled, per SKU — the pool a delivery draws from.
+ *
+ * The count comes from `product_stock`, because that is what
+ * `recordSettlements` caps a row against and the preview must not disagree
+ * with it. The value comes from `po_settlement`, so the pool is worth what
+ * was agreed when its POs were approved rather than what the product is
+ * priced at today.
+ */
 export async function inProgressBySupplier(
   supplierId: string,
 ): Promise<InProgressLine[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("product_stock")
-    .select("sku, name, in_progress_qty, in_progress_value")
-    .eq("supplier_id", supplierId)
-    .gt("in_progress_qty", 0)
-    .order("sku");
+  const [{ data, error }, held] = await Promise.all([
+    supabase
+      .from("product_stock")
+      .select("sku, name, in_progress_qty")
+      .eq("supplier_id", supplierId)
+      .gt("in_progress_qty", 0)
+      .order("sku"),
+    supabase
+      .from("po_settlement")
+      .select("sku, out_for_delivery_value")
+      .eq("supplier_id", supplierId)
+      .eq("request_status", "approved"),
+  ]);
 
   if (error) throw new Error(`Could not load in progress: ${error.message}`);
+  if (held.error) {
+    throw new Error(`Could not value in progress: ${held.error.message}`);
+  }
+
+  const value = new Map<string, number>();
+  for (const po of held.data ?? []) {
+    const sku = po.sku;
+    if (!sku) continue;
+    value.set(sku, (value.get(sku) ?? 0) + (po.out_for_delivery_value ?? 0));
+  }
 
   return (data ?? []).map((row) => ({
     sku: row.sku ?? "",
     name: row.name ?? "",
     in_progress_qty: row.in_progress_qty ?? 0,
-    in_progress_value: row.in_progress_value ?? 0,
+    in_progress_value: value.get(row.sku ?? "") ?? 0,
   }));
 }
