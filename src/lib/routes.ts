@@ -27,7 +27,6 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/dashboard", key: "dashboard" },
     { href: "/transfers", key: "transfers" },
     { href: "/warehouse-stock", key: "warehouseStock" },
-    { href: "/movements", key: "movements" },
   ],
   admin: [
     { href: "/dashboard", key: "dashboard" },
@@ -48,7 +47,7 @@ const ACCESS: Record<string, readonly AppRole[]> = {
   "/catalog": ["sllr", "admin"],
   "/requests": ["sllr", "admin"],
   "/inventory": ["supplier", "admin"],
-  "/movements": ["supplier", "admin", "warehouse"],
+  "/movements": ["supplier", "admin"],
   "/approvals": ["supplier", "admin"],
   "/wallet": ["sllr", "supplier", "admin"],
   "/daily": ["sllr", "admin"],
@@ -85,6 +84,10 @@ const COUNTERPART: Partial<Record<AppRole, Record<string, string>>> = {
     "/wallet": "/warehouse-stock",
     "/requests": "/transfers",
     "/daily": "/transfers",
+    // The ledger is a supplier's record of its own shelf. A warehouse
+    // account belongs on the queue it actually works, so it is named here
+    // rather than left to fall through to the dashboard.
+    "/movements": "/transfers",
   },
 };
 

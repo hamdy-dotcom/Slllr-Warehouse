@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
-import { requireProfile } from "@/lib/auth";
+import { requireSupplier } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
 import {
   LEDGER_LIMIT,
@@ -37,11 +37,10 @@ export default async function MovementsPage({
     q?: string;
   }>;
 }) {
-  // The warehouse reads this ledger too — every transfer into Riyadh lands
-  // here — but only a supplier records a movement by hand, so the recording
-  // buttons are gated below rather than the whole page.
-  const profile = await requireProfile();
-  const canRecord = profile.role === "supplier" || profile.role === "admin";
+  // A supplier's ledger of its own shelf, so the whole page is gated on
+  // having one. Warehouse never reaches this guard: routes.ts turns it away
+  // at the middleware and sends it to the transfer queue.
+  await requireSupplier();
 
   const params = await searchParams;
   const direction = isDirection(params.direction)
@@ -116,12 +115,8 @@ export default async function MovementsPage({
         to={to}
         q={q}
       >
-        {canRecord ? (
-          <>
-            <RecordMovementButton direction="out" shelf={shelf} />
-            <RecordMovementButton direction="in" shelf={shelf} />
-          </>
-        ) : null}
+        <RecordMovementButton direction="out" shelf={shelf} />
+        <RecordMovementButton direction="in" shelf={shelf} />
       </MovementFilters>
 
       <Card>
