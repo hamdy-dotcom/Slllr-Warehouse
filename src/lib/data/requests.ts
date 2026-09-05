@@ -22,9 +22,10 @@ function normaliseRequest(row: DispatchRow): RequestDispatch {
     qty_approved: row.qty_approved,
     qty_outstanding: row.qty_outstanding,
     outstanding_value: row.outstanding_value,
-    qty_in_progress: null,
+    qty_awaiting_transfer: null,
+    qty_in_warehouse: null,
+    qty_out_for_delivery: null,
     qty_delivered: null,
-    qty_returned: null,
     qty_cancelled: null,
     status: row.status as RequestDispatch["status"],
     hold_until: row.hold_until,
@@ -110,7 +111,7 @@ async function withLivePool(rows: RequestDispatch[]): Promise<RequestDispatch[]>
   const { data, error } = await supabase
     .from("po_settlement")
     .select(
-      "po_id, qty_in_progress, qty_delivered, qty_returned, qty_cancelled, qty_outstanding, outstanding_value",
+      "po_id, qty_awaiting_transfer, qty_in_warehouse, qty_out_for_delivery, qty_delivered, qty_cancelled, awaiting_transfer_value",
     )
     .in(
       "po_id",
@@ -129,12 +130,13 @@ async function withLivePool(rows: RequestDispatch[]): Promise<RequestDispatch[]>
 
     return {
       ...row,
-      qty_in_progress: live.qty_in_progress ?? 0,
+      qty_awaiting_transfer: live.qty_awaiting_transfer ?? 0,
+      qty_in_warehouse: live.qty_in_warehouse ?? 0,
+      qty_out_for_delivery: live.qty_out_for_delivery ?? 0,
       qty_delivered: live.qty_delivered ?? 0,
-      qty_returned: live.qty_returned ?? 0,
       qty_cancelled: live.qty_cancelled ?? 0,
-      qty_outstanding: live.qty_outstanding ?? 0,
-      outstanding_value: live.outstanding_value,
+      qty_outstanding: live.qty_awaiting_transfer ?? 0,
+      outstanding_value: live.awaiting_transfer_value,
     };
   });
 }
@@ -235,7 +237,9 @@ export async function requestValues(): Promise<RequestValues> {
   const [held, asked] = await Promise.all([
     supabase
       .from("po_settlement")
-      .select("qty_outstanding, unit_cost")
+      // Held is what the supplier still owes the transfer: approved units
+      // that have not moved to Riyadh yet.
+      .select("qty_awaiting_transfer, unit_cost")
       .eq("request_status", "approved"),
     supabase
       .from("reserve_request_dispatch")
@@ -255,7 +259,7 @@ export async function requestValues(): Promise<RequestValues> {
     // and are being settled through the wallet, so they are no longer held.
     held: rollValue(
       held.data ?? [],
-      (row) => row.qty_outstanding ?? 0,
+      (row) => row.qty_awaiting_transfer ?? 0,
       (row) => row.unit_cost,
     ),
     asked: rollValue(

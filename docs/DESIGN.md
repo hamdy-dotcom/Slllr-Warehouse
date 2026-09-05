@@ -109,8 +109,9 @@ database and stays there.
 **Cancelled** was released back to the supplier; approved quantity never
 shrinks to account for it.
 
-A row about a PO adds up: approved = dispatched + delivered + returned +
-outstanding + cancelled.
+A row about a PO adds up: approved = awaiting transfer + in warehouse + out
+for delivery + delivered + cancelled. A return is not a pool of its own — the
+units are back in Riyadh and already counted under in warehouse.
 
 A progress bar over one of those rows stacks every share, cancelled included
 in a muted grey, so the empty part of the track always means "still on the
@@ -131,6 +132,10 @@ reserved for money:
 | outstanding | المتبقي |
 | cancelled | الملغى |
 | paid to the supplier | المصروف |
+| the Riyadh warehouse | مستودع الرياض |
+| awaiting transfer | بانتظار النقل |
+| part arrived | وصل جزئيًا |
+| in warehouse | في المستودع |
 
 المصروف reads as money paid out, so it names only that. It appeared on the
 same page as the dispatched pool once and has to stay off it.

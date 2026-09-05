@@ -40,9 +40,10 @@ export type RequestDispatch = {
   qty_outstanding: number | null;
   outstanding_value: number | null;
   /** Live pool: with customers now, awaiting delivery or return. */
-  qty_in_progress: number | null;
+  qty_awaiting_transfer: number | null;
+  qty_in_warehouse: number | null;
+  qty_out_for_delivery: number | null;
   qty_delivered: number | null;
-  qty_returned: number | null;
   qty_cancelled: number | null;
   status: RequestStatus;
   hold_until: string | null;

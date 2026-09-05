@@ -3,7 +3,11 @@ import type { AppRole } from "@/lib/types";
 /** `key` names an entry in the `nav` messages, never the copy itself. */
 export type NavItem = { href: string; key: string };
 
-/** One codebase, two experiences. Admin borrows the supplier nav plus catalog. */
+/**
+ * One codebase, several experiences. Admin borrows the supplier nav plus the
+ * Sllr screens; warehouse sees only the Riyadh side of the journey — it never
+ * negotiates with a supplier, so no catalog, approvals or wallet.
+ */
 export const NAV: Record<AppRole, NavItem[]> = {
   sllr: [
     { href: "/dashboard", key: "dashboard" },
@@ -19,8 +23,16 @@ export const NAV: Record<AppRole, NavItem[]> = {
     { href: "/wallet", key: "wallet" },
     { href: "/approvals", key: "approvals" },
   ],
+  warehouse: [
+    { href: "/dashboard", key: "dashboard" },
+    { href: "/transfers", key: "transfers" },
+    { href: "/warehouse-stock", key: "warehouseStock" },
+    { href: "/movements", key: "movements" },
+  ],
   admin: [
     { href: "/dashboard", key: "dashboard" },
+    { href: "/transfers", key: "transfers" },
+    { href: "/warehouse-stock", key: "warehouseStock" },
     { href: "/catalog", key: "catalog" },
     { href: "/daily", key: "daily" },
     { href: "/inventory", key: "inventory" },
@@ -32,14 +44,16 @@ export const NAV: Record<AppRole, NavItem[]> = {
 
 /** Which roles may open each app route. */
 const ACCESS: Record<string, readonly AppRole[]> = {
-  "/dashboard": ["sllr", "supplier", "admin"],
+  "/dashboard": ["sllr", "supplier", "admin", "warehouse"],
   "/catalog": ["sllr", "admin"],
   "/requests": ["sllr", "admin"],
   "/inventory": ["supplier", "admin"],
-  "/movements": ["supplier", "admin"],
+  "/movements": ["supplier", "admin", "warehouse"],
   "/approvals": ["supplier", "admin"],
   "/wallet": ["sllr", "supplier", "admin"],
   "/daily": ["sllr", "admin"],
+  "/transfers": ["warehouse", "admin"],
+  "/warehouse-stock": ["warehouse", "admin"],
 };
 
 /** Where a role lands with no route in mind. */
@@ -54,11 +68,23 @@ const COUNTERPART: Partial<Record<AppRole, Record<string, string>>> = {
     "/catalog": "/inventory",
     "/requests": "/approvals",
     "/daily": "/wallet",
+    "/transfers": "/approvals",
+    "/warehouse-stock": "/inventory",
   },
   sllr: {
     "/inventory": "/catalog",
     "/movements": "/catalog",
     "/approvals": "/catalog",
+    "/transfers": "/daily",
+    "/warehouse-stock": "/daily",
+  },
+  warehouse: {
+    "/catalog": "/transfers",
+    "/inventory": "/warehouse-stock",
+    "/approvals": "/transfers",
+    "/wallet": "/warehouse-stock",
+    "/requests": "/transfers",
+    "/daily": "/transfers",
   },
 };
 

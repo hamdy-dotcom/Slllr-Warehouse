@@ -5,6 +5,12 @@
  * stored: `po_settlement` derives every figure from the request, the movements
  * booked against it, and the settlements booked against those.
  *
+ * A PO now crosses two warehouses. Units are approved on the supplier's
+ * shelf, **arrive** in Riyadh — which is when the supplier's `total_qty`
+ * drops, not when they are dispatched — then go out for delivery, and are
+ * either delivered or returned. A return comes back to Riyadh, not to the
+ * supplier.
+ *
  * Each product has its own queue, ordered by `po_date` — `queue_position` in
  * the view. Which end of that queue an operation eats from is a rule per
  * operation, not one FIFO rule:
@@ -30,8 +36,9 @@
 
 /** Exactly the strings `po_settlement.po_status` stores, spaces and all. */
 export const PO_STATUSES = [
-  "awaiting dispatch",
-  "part dispatched",
+  "awaiting transfer",
+  "part arrived",
+  "in warehouse",
   "dispatched",
   "settled",
   "cancelled",
@@ -50,8 +57,9 @@ export function isPoStatus(value: string | undefined): value is PoStatus {
  * callers fall back to the raw value rather than rendering a broken lookup.
  */
 const STATUS_KEYS: Record<PoStatus, string> = {
-  "awaiting dispatch": "statusAwaiting",
-  "part dispatched": "statusPartDispatched",
+  "awaiting transfer": "statusAwaitingTransfer",
+  "part arrived": "statusPartArrived",
+  "in warehouse": "statusInWarehouse",
   dispatched: "statusDispatched",
   settled: "statusSettled",
   cancelled: "statusCancelled",
@@ -77,20 +85,25 @@ export type Po = {
   unit_cost: number | null;
   qty_requested: number;
   qty_approved: number;
-  qty_cancelled: number;
-  qty_outstanding: number;
-  qty_delivered: number;
+  /** Everything that has ever reached Riyadh against this PO. */
+  qty_arrived: number;
   qty_returned: number;
-  qty_in_progress: number;
+  qty_cancelled: number;
+  // The five pools the approved quantity is split across.
+  qty_awaiting_transfer: number;
+  qty_in_warehouse: number;
+  qty_out_for_delivery: number;
+  qty_delivered: number;
   po_value: number;
-  outstanding_value: number;
+  awaiting_transfer_value: number;
+  in_warehouse_value: number;
+  out_for_delivery_value: number;
   delivered_value: number;
   returned_value: number;
-  in_progress_value: number;
   cancelled_value: number;
-  pct_in_progress: number;
+  pct_arrived: number;
+  pct_out_for_delivery: number;
   pct_delivered: number;
-  pct_returned: number;
   po_status: PoStatus;
 };
 
@@ -136,10 +149,11 @@ export const PO_SORTS = [
   "ref",
   "approved",
   "value",
-  "in_progress",
+  "awaiting_transfer",
+  "in_warehouse",
+  "out_for_delivery",
   "delivered",
-  "returned",
-  "outstanding",
+  "cancelled",
   "status",
 ] as const;
 
@@ -173,10 +187,11 @@ export function sortPos(pos: Po[], sort: PoSort, dir: SortDir): Po[] {
     ref: (po) => po.po_ref,
     approved: (po) => po.qty_approved,
     value: (po) => po.po_value,
-    in_progress: (po) => po.qty_in_progress,
+    awaiting_transfer: (po) => po.qty_awaiting_transfer,
+    in_warehouse: (po) => po.qty_in_warehouse,
+    out_for_delivery: (po) => po.qty_out_for_delivery,
     delivered: (po) => po.qty_delivered,
-    returned: (po) => po.qty_returned,
-    outstanding: (po) => po.qty_outstanding,
+    cancelled: (po) => po.qty_cancelled,
     status: (po) => po.po_status,
   };
 
@@ -197,71 +212,71 @@ export function sortPos(pos: Po[], sort: PoSort, dir: SortDir): Po[] {
 }
 
 /**
- * How much of a PO has left the shelf, and where all of it sits now.
+ * Where a PO's approved quantity sits, as shares of the whole.
  *
- * Dispatched, delivered and returned are all units that went out: a delivery
- * or a return moves a unit on from dispatched, it does not put it back. So
- * `qty` is the three added together — the view calls the same figure
- * `qty_dispatched_total` — and a PO with nothing outstanding has fully gone
- * however much of it has since been settled.
+ * The five add up to the approved quantity, so a bar built from them always
+ * fills exactly. Returns are deliberately absent: a returned unit is back in
+ * Riyadh and is already counted under in warehouse.
  *
- * Cancelled is the fourth share and never left the shelf, so it is not in
- * `pct`. It is reported separately because a bar that ignored it would leave
- * a PO that was fully dispatched and partly released back looking unfinished,
- * when there is nothing more to send.
- *
- * Worked out from the quantities rather than read from `pct_off_shelf` and
- * the three per-state percentages, which each round on their own and drift a
- * point off their own total.
+ * Worked out from the quantities rather than the view's `pct_*` columns,
+ * which each round on their own and drift a point off their own total.
  */
-export function poLeftShelf(po: Po): {
-  qty: number;
-  pct: number;
-  dispatchedPct: number;
+export function poShares(po: Po): {
+  awaitingTransferPct: number;
+  inWarehousePct: number;
+  outForDeliveryPct: number;
   deliveredPct: number;
-  returnedPct: number;
   cancelledPct: number;
+  /** Everything that has reached Riyadh, as a share — the view's pct_arrived. */
+  arrivedPct: number;
 } {
-  const qty = po.qty_in_progress + po.qty_delivered + po.qty_returned;
   const share = (part: number) =>
     po.qty_approved <= 0 ? 0 : (part / po.qty_approved) * 100;
 
   return {
-    qty,
-    pct: share(qty),
-    dispatchedPct: share(po.qty_in_progress),
+    awaitingTransferPct: share(po.qty_awaiting_transfer),
+    inWarehousePct: share(po.qty_in_warehouse),
+    outForDeliveryPct: share(po.qty_out_for_delivery),
     deliveredPct: share(po.qty_delivered),
-    returnedPct: share(po.qty_returned),
     cancelledPct: share(po.qty_cancelled),
+    arrivedPct: share(po.qty_arrived),
   };
 }
 
 export type PoTotals = {
-  open: number;
-  inProgress: number;
+  awaitingTransfer: number;
+  inWarehouse: number;
+  outForDelivery: number;
   delivered: number;
   count: number;
 };
 
 /**
- * What the listed POs are worth.
+ * What the listed POs are worth, by where the units are.
  *
- * `open` is approved, not dispatched and not cancelled — the part of a PO
- * that has not started moving. Returns went back and were never owed for, so
- * they are in none of the three.
+ * Returns are not a total of their own: a returned unit comes back to Riyadh
+ * and is counted again under in warehouse, so adding it here would double it.
  */
 export function poTotals(pos: Po[]): PoTotals {
-  let open = 0;
-  let inProgress = 0;
+  let awaitingTransfer = 0;
+  let inWarehouse = 0;
+  let outForDelivery = 0;
   let delivered = 0;
 
   for (const po of pos) {
-    open += po.outstanding_value;
-    inProgress += po.in_progress_value;
+    awaitingTransfer += po.awaiting_transfer_value;
+    inWarehouse += po.in_warehouse_value;
+    outForDelivery += po.out_for_delivery_value;
     delivered += po.delivered_value;
   }
 
-  return { open, inProgress, delivered, count: pos.length };
+  return {
+    awaitingTransfer,
+    inWarehouse,
+    outForDelivery,
+    delivered,
+    count: pos.length,
+  };
 }
 
 /** Every supplier appearing in these POs, for the filter. */
@@ -280,13 +295,13 @@ export function releasableProducts(
   const bySku = new Map<string, { sku: string; name: string; outstanding: number }>();
 
   for (const po of pos) {
-    if (po.qty_outstanding <= 0) continue;
+    if (po.qty_awaiting_transfer <= 0) continue;
     const entry = bySku.get(po.sku) ?? {
       sku: po.sku,
       name: po.product_name,
       outstanding: 0,
     };
-    entry.outstanding += po.qty_outstanding;
+    entry.outstanding += po.qty_awaiting_transfer;
     bySku.set(po.sku, entry);
   }
 
@@ -324,7 +339,10 @@ export function simulateRelease(
     return { sku, qty, hits: [], available: 0, value: null, problem: "skuNotFound" };
   }
 
-  const available = queue.reduce((total, po) => total + po.qty_outstanding, 0);
+  const available = queue.reduce(
+    (total, po) => total + po.qty_awaiting_transfer,
+    0,
+  );
   if (qty > available) {
     return { sku, qty, hits: [], available, value: null, problem: "onlyReserved" };
   }
@@ -335,7 +353,7 @@ export function simulateRelease(
 
   for (const po of queue) {
     if (left <= 0) break;
-    const take = Math.min(left, po.qty_outstanding);
+    const take = Math.min(left, po.qty_awaiting_transfer);
     if (take <= 0) continue;
 
     hits.push({ po_ref: po.po_ref, queue_position: po.queue_position, qty: take });

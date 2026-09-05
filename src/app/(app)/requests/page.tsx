@@ -41,9 +41,10 @@ function Split({ qty }: { qty: number | null }) {
 }
 
 export default async function RequestsPage() {
-  const [t, tc, locale, requests] = await Promise.all([
+  const [t, tc, tp, locale, requests] = await Promise.all([
     getTranslations("requests"),
     getTranslations("common"),
+    getTranslations("po"),
     getLocale(),
     listMyRequests(),
   ]);
@@ -122,12 +123,10 @@ export default async function RequestsPage() {
                   <th className={TH}>{tc("unitCost")}</th>
                   <th className={TH}>{t("requested")}</th>
                   <th className={TH}>{t("approved")}</th>
-                  <th className={TH} title={t("dispatchedHint")}>
-                    {t("dispatched")}
-                  </th>
+                  <th className={TH}>{tp("colAwaitingTransfer")}</th>
+                  <th className={TH}>{tp("colInWarehouse")}</th>
+                  <th className={TH}>{tp("colOutForDelivery")}</th>
                   <th className={TH}>{t("delivered")}</th>
-                  <th className={TH}>{t("returned")}</th>
-                  <th className={TH}>{t("outstanding")}</th>
                   <th className={TH}>{t("cancelled")}</th>
                   <th className={TH}>{tc("value")}</th>
                   <th className={TH}>{t("holdUntil")}</th>
@@ -207,25 +206,10 @@ export default async function RequestsPage() {
                           </span>
                         )}
                       </td>
-                      <Split qty={request.qty_in_progress} />
+                      <Split qty={request.qty_awaiting_transfer} />
+                      <Split qty={request.qty_in_warehouse} />
+                      <Split qty={request.qty_out_for_delivery} />
                       <Split qty={request.qty_delivered} />
-                      <Split qty={request.qty_returned} />
-
-                      <td className={`${TD} tabular-nums`}>
-                        {request.qty_approved === null ? (
-                          <span className="text-ink-3">—</span>
-                        ) : (
-                          <b
-                            className={
-                              outstanding > 0
-                                ? "font-medium text-orange"
-                                : "font-normal text-ink-3"
-                            }
-                          >
-                            {n(outstanding)}
-                          </b>
-                        )}
-                      </td>
 
                       <Split qty={request.qty_cancelled} />
 

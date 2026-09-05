@@ -41,22 +41,25 @@ function toPo(row: Record<string, unknown>): Po | null {
     unit_cost: row.unit_cost === null ? null : Number(row.unit_cost),
     qty_requested: num(row.qty_requested),
     qty_approved: num(row.qty_approved),
-    qty_outstanding: num(row.qty_outstanding),
-    qty_delivered: num(row.qty_delivered),
+    qty_arrived: num(row.qty_arrived),
     qty_returned: num(row.qty_returned),
     qty_cancelled: num(row.qty_cancelled),
-    qty_in_progress: num(row.qty_in_progress),
+    qty_awaiting_transfer: num(row.qty_awaiting_transfer),
+    qty_in_warehouse: num(row.qty_in_warehouse),
+    qty_out_for_delivery: num(row.qty_out_for_delivery),
+    qty_delivered: num(row.qty_delivered),
     queue_position: num(row.queue_position),
     po_value: num(row.po_value),
-    outstanding_value: num(row.outstanding_value),
+    awaiting_transfer_value: num(row.awaiting_transfer_value),
+    in_warehouse_value: num(row.in_warehouse_value),
+    out_for_delivery_value: num(row.out_for_delivery_value),
     delivered_value: num(row.delivered_value),
     returned_value: num(row.returned_value),
-    in_progress_value: num(row.in_progress_value),
     cancelled_value: num(row.cancelled_value),
-    pct_in_progress: num(row.pct_in_progress),
+    pct_arrived: num(row.pct_arrived),
+    pct_out_for_delivery: num(row.pct_out_for_delivery),
     pct_delivered: num(row.pct_delivered),
-    pct_returned: num(row.pct_returned),
-    po_status: (row.po_status as PoStatus) ?? "awaiting dispatch",
+    po_status: (row.po_status as PoStatus) ?? "awaiting transfer",
   };
 }
 
@@ -184,7 +187,7 @@ export async function poQueueBySupplier(
   const { data, error } = await supabase
     .from("po_settlement")
     .select(
-      "po_id, po_ref, po_date, sku, qty_outstanding, qty_in_progress, unit_cost",
+      "po_id, po_ref, po_date, sku, qty_in_warehouse, qty_out_for_delivery, unit_cost",
     )
     .eq("supplier_id", supplierId)
     .order("po_date", { ascending: true });
@@ -192,10 +195,12 @@ export async function poQueueBySupplier(
   if (error) throw new Error(`Could not load the PO queue: ${error.message}`);
 
   return (data ?? []).flatMap((row) => {
-    const outstanding = row.qty_outstanding ?? 0;
-    const inProgress = row.qty_in_progress ?? 0;
+    // A dispatch draws on the Riyadh warehouse now, not on what is approved:
+    // units have to arrive before they can go out.
+    const inWarehouse = row.qty_in_warehouse ?? 0;
+    const outForDelivery = row.qty_out_for_delivery ?? 0;
     if (!row.po_id || !row.po_ref || !row.po_date || !row.sku) return [];
-    if (outstanding <= 0 && inProgress <= 0) return [];
+    if (inWarehouse <= 0 && outForDelivery <= 0) return [];
 
     return [
       {
@@ -203,8 +208,8 @@ export async function poQueueBySupplier(
         po_ref: row.po_ref,
         po_date: row.po_date,
         sku: row.sku,
-        outstanding,
-        in_progress: inProgress,
+        in_warehouse: inWarehouse,
+        out_for_delivery: outForDelivery,
         unit_cost: row.unit_cost,
       },
     ];

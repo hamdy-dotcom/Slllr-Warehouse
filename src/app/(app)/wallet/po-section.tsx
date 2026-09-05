@@ -60,10 +60,18 @@ export async function PoSection({
         </div>
 
         <div className="flex flex-wrap gap-x-[28px] gap-y-[8px]">
-          <Total label={t("openValue")} value={money(totals.open)} />
           <Total
-            label={t("inProgressValue")}
-            value={money(totals.inProgress)}
+            label={t("awaitingTransferValue")}
+            value={money(totals.awaitingTransfer)}
+          />
+          <Total
+            label={t("inWarehouseValue")}
+            value={money(totals.inWarehouse)}
+            tone="text-green"
+          />
+          <Total
+            label={t("outForDeliveryValue")}
+            value={money(totals.outForDelivery)}
             tone="text-orange"
           />
           <Total

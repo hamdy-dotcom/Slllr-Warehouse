@@ -20,6 +20,10 @@ import { money } from "@/lib/money";
  *   record_stock_movements   `SKU not found`
  *                            `Would leave 0 units, below the 76 reserved…`
  *                            `1637 → 1137, across 2 POs`
+ *   record_arrivals          `arrived partially, 30 of 100 units`
+ *                            `arrived in full, 70 units`
+ *                            `Only 70 units are awaiting transfer on this PO`
+ *                            `PO not found`
  *   bulk_create_products     `added, 12 units`
  *                            `This SKU already exists — use the bulk stock…`
  *                            `Warehouse code must look like L03-R02-B07`
@@ -78,6 +82,39 @@ const PATTERNS: {
     params: (m) => ({ left: m[1], reserved: m[2] }),
   },
   { test: /request_id/, key: "needsRequest" },
+  {
+    test: /^arrived partially, ([\d,]+) of ([\d,]+) units?$/,
+    key: "arrivedPartially",
+    params: (m) => ({ count: m[1], total: m[2] }),
+  },
+  {
+    test: /^arrived in full, ([\d,]+) units?$/,
+    key: "arrivedInFull",
+    params: (m) => ({ count: m[1] }),
+  },
+  {
+    test: /^Only ([\d,]+) units are awaiting transfer on this PO$/,
+    key: "onlyAwaitingTransfer",
+    params: (m) => ({ available: m[1] }),
+  },
+  {
+    test: /^PO not found$/,
+    key: "poNotFound",
+  },
+  {
+    test: /^Only ([\d,]+) units are in the Riyadh warehouse for this product$/,
+    key: "onlyInWarehouse",
+    params: (m) => ({ available: m[1] }),
+  },
+  {
+    test: /^dispatched ([\d,]+) units? across (\d+) POs?$/,
+    key: "dispatchedAcrossPos",
+    params: (m) => ({ count: m[1], pos: Number(m[2]) }),
+  },
+  {
+    test: /^Not allowed$/,
+    key: "notAllowed",
+  },
   {
     test: /^added, ([\d,]+) units?$/,
     key: "productAdded",

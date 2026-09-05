@@ -266,6 +266,36 @@ originally approved. On a product with 60 approved and 50 dispatched, 30 is
 accepted and 5 is refused with "Cannot go below the 10 units still reserved
 for Sllr".
 
+### The journey, and who sees it
+
+Stock crosses two warehouses:
+
+```
+requested → approved → arrived in Riyadh → dispatched → delivered / returned
+```
+
+**Arrival is when stock leaves the supplier.** `record_arrivals` drops
+`products.total_qty` and writes a `transfer_riyadh` movement; dispatch no
+longer touches the supplier's shelf at all, and nothing can be dispatched that
+has not arrived — the RPC refuses with "Only 0 units are in the Riyadh
+warehouse for this product". A customer return goes back to Riyadh, not to the
+supplier.
+
+So "Reserved for Sllr" on the supplier side means **awaiting transfer**: units
+approved but not yet moved. It falls as arrivals are recorded.
+
+A fourth role, `warehouse`, works the Riyadh side. It sees the transfer queue,
+warehouse stock and the movements ledger — no catalog, approvals or wallet,
+since it never negotiates with a supplier. `/transfers` and `/warehouse-stock`
+are closed to everyone else, and the middleware sends each role somewhere
+useful rather than to the dashboard.
+
+`/transfers` is the queue from `transfer_queue`, oldest approval first —
+that order is the work order, not a sort. "Arrived in full" is one tap because
+it is the common case; the partial dialog and the bulk CSV cover the rest, and
+all three end in `record_arrivals`, which caps every row at what is still
+awaiting transfer.
+
 ### Purchase orders
 
 A PO is one approved reserve request for one product. Nothing about a PO is
@@ -281,11 +311,15 @@ absent from the `Po` and `RequestDispatch` types so one cannot render it by
 accident. Its *share* of the PO is a different matter and does belong on
 screen — the view calls it `pct_off_shelf`.
 
-Every PO reads as one identity:
+Every PO reads as one identity across five pools:
 
 ```
-approved = dispatched + delivered + returned + outstanding + cancelled
+approved = awaiting transfer + in warehouse + out for delivery
+         + delivered + cancelled
 ```
+
+A return is not a sixth pool: those units are back in Riyadh and are already
+counted under in warehouse.
 
 Percentages on the PO table are worked out from those quantities rather than
 read from the view's own `pct_*` columns. Each of those rounds on its own, so

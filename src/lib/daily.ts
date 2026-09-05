@@ -39,8 +39,10 @@ export type PoQueueLine = {
   /** ISO timestamp. Orders this PO within its own product's queue. */
   po_date: string;
   sku: string;
-  outstanding: number;
-  in_progress: number;
+  /** In the Riyadh warehouse, ready to go out. */
+  in_warehouse: number;
+  /** Out with customers, awaiting delivery or return. */
+  out_for_delivery: number;
   unit_cost: number | null;
 };
 
@@ -50,7 +52,7 @@ export type PoHit = { po_ref: string; qty: number };
 export type SimRow = {
   row: SettlementCsvRow;
   /** The pool this row draws from, before and after, summed over the queue. */
-  pool: "outstanding" | "inProgress";
+  pool: "inWarehouse" | "outForDelivery";
   before: number;
   after: number;
   /** In progress before and after, for every kind — a dispatch adds to it. */
@@ -83,8 +85,8 @@ export type Simulation = {
 
 type Entry = {
   po_ref: string;
-  outstanding: number;
-  in_progress: number;
+  in_warehouse: number;
+  out_for_delivery: number;
   unit_cost: number | null;
 };
 
@@ -98,8 +100,8 @@ function queueBySku(queue: PoQueueLine[]): Map<string, Entry[]> {
     const list = bySku.get(line.sku) ?? [];
     list.push({
       po_ref: line.po_ref,
-      outstanding: line.outstanding,
-      in_progress: line.in_progress,
+      in_warehouse: line.in_warehouse,
+      out_for_delivery: line.out_for_delivery,
       unit_cost: line.unit_cost,
     });
     bySku.set(line.sku, list);
@@ -123,7 +125,7 @@ const sum = (entries: Entry[], of: (entry: Entry) => number) =>
 function draw(
   entries: Entry[],
   qty: number,
-  from: "outstanding" | "in_progress",
+  from: "in_warehouse" | "out_for_delivery",
   onTake: (entry: Entry, take: number) => void,
 ): { hits: PoHit[]; value: number | null } {
   const hits: PoHit[] = [];
@@ -158,21 +160,23 @@ export function simulateDaily(
 
   const simulated = rows.map<SimRow>((row) => {
     const entries = bySku.get(row.sku) ?? [];
-    const progressBefore = sum(entries, (entry) => entry.in_progress);
+    const progressBefore = sum(entries, (entry) => entry.out_for_delivery);
     const dispatch = row.kind === "dispatched";
-    const pool = dispatch ? ("outstanding" as const) : ("inProgress" as const);
+    const pool = dispatch
+      ? ("inWarehouse" as const)
+      : ("outForDelivery" as const);
     const before = dispatch
-      ? sum(entries, (entry) => entry.outstanding)
+      ? sum(entries, (entry) => entry.in_warehouse)
       : progressBefore;
     const after = before - row.qty;
 
     let problem: SimProblem | null = null;
     if (!bySku.has(row.sku)) problem = { key: "skuNotFound" };
     else if (before === 0) {
-      problem = { key: dispatch ? "nothingOutstanding" : "nothingInProgress" };
+      problem = { key: dispatch ? "nothingInWarehouse" : "nothingOutForDelivery" };
     } else if (after < 0) {
       problem = {
-        key: dispatch ? "onlyOutstanding" : "onlyInProgress",
+        key: dispatch ? "onlyInWarehouse" : "onlyOutForDelivery",
         params: {
           available: before.toLocaleString("en-US"),
           wanted: row.qty.toLocaleString("en-US"),
@@ -199,13 +203,15 @@ export function simulateDaily(
     const walk = row.kind === "returned" ? [...entries].reverse() : entries;
 
     const { hits, value } = dispatch
-      ? draw(walk, row.qty, "outstanding", (entry, take) => {
-          entry.outstanding -= take;
-          // Dispatched units stay on their own PO, now in progress.
-          entry.in_progress += take;
+      ? draw(walk, row.qty, "in_warehouse", (entry, take) => {
+          entry.in_warehouse -= take;
+          // Dispatched units stay on their own PO, now out for delivery.
+          entry.out_for_delivery += take;
         })
-      : draw(walk, row.qty, "in_progress", (entry, take) => {
-          entry.in_progress -= take;
+      : draw(walk, row.qty, "out_for_delivery", (entry, take) => {
+          entry.out_for_delivery -= take;
+          // A return goes back to the Riyadh warehouse, not to the supplier.
+          if (row.kind === "returned") entry.in_warehouse += take;
         });
 
     if (dispatch) dispatchedValue += value ?? 0;

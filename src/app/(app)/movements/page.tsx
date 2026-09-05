@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { ProductMini } from "@/components/product-thumb";
 import { Card, Empty, Muted, SectionTitle } from "@/components/ui/card";
-import { requireSupplier } from "@/lib/auth";
+import { requireProfile } from "@/lib/auth";
 import { listProductStock } from "@/lib/data/products";
 import {
   LEDGER_LIMIT,
@@ -37,7 +37,11 @@ export default async function MovementsPage({
     q?: string;
   }>;
 }) {
-  await requireSupplier();
+  // The warehouse reads this ledger too — every transfer into Riyadh lands
+  // here — but only a supplier records a movement by hand, so the recording
+  // buttons are gated below rather than the whole page.
+  const profile = await requireProfile();
+  const canRecord = profile.role === "supplier" || profile.role === "admin";
 
   const params = await searchParams;
   const direction = isDirection(params.direction)
@@ -112,8 +116,12 @@ export default async function MovementsPage({
         to={to}
         q={q}
       >
-        <RecordMovementButton direction="out" shelf={shelf} />
-        <RecordMovementButton direction="in" shelf={shelf} />
+        {canRecord ? (
+          <>
+            <RecordMovementButton direction="out" shelf={shelf} />
+            <RecordMovementButton direction="in" shelf={shelf} />
+          </>
+        ) : null}
       </MovementFilters>
 
       <Card>

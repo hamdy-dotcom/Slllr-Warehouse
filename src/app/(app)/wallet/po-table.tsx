@@ -11,7 +11,7 @@ import { formatDate, n } from "@/lib/format";
 import { money } from "@/lib/money";
 import {
   poStatusKey,
-  poLeftShelf,
+  poShares,
   type Po,
   type PoSettlementEntry,
   type PoSort,
@@ -19,9 +19,10 @@ import {
 } from "@/lib/po";
 
 const STATUS_STYLE: Record<string, string> = {
-  "awaiting dispatch": "bg-neutral-soft text-ink-2",
-  "part dispatched": "bg-amber-soft text-amber-ink",
-  "in progress": "bg-orange-soft text-orange-ink",
+  "awaiting transfer": "bg-neutral-soft text-ink-2",
+  "part arrived": "bg-amber-soft text-amber-ink",
+  "in warehouse": "bg-green-soft text-green",
+  dispatched: "bg-orange-soft text-orange-ink",
   settled: "bg-green-soft text-green",
   cancelled: "bg-red-soft text-orange-ink",
 };
@@ -46,14 +47,15 @@ const COLUMNS: {
   { sort: "approved", key: "colApproved", numeric: true },
   { sort: "value", key: "colValue", numeric: true },
   {
-    sort: "in_progress",
-    key: "colInProgress",
+    sort: "awaiting_transfer",
+    key: "colAwaitingTransfer",
     numeric: true,
-    titleKey: "colDispatchedTitle",
+    titleKey: "colArrivedTitle",
   },
+  { sort: "in_warehouse", key: "colInWarehouse", numeric: true },
+  { sort: "out_for_delivery", key: "colOutForDelivery", numeric: true },
   { sort: "delivered", key: "colDelivered", numeric: true },
-  { sort: "returned", key: "colReturned", numeric: true },
-  { sort: "outstanding", key: "colOutstanding", numeric: true },
+  { sort: "cancelled", key: "colCancelled", numeric: true },
   { sort: "status", key: "colStatus" },
 ];
 
@@ -203,15 +205,22 @@ export function PoTable({
                     ) : null}
                   </td>
 
-                  <Dispatched po={po} />
+                  <Journey po={po} />
+                  <Qty
+                    qty={po.qty_in_warehouse}
+                    value={po.in_warehouse_value}
+                  />
+                  <Qty
+                    qty={po.qty_out_for_delivery}
+                    value={po.out_for_delivery_value}
+                  />
                   <Qty
                     qty={po.qty_delivered}
                     value={po.delivered_value}
                     pct={po.pct_delivered}
                     tone="green"
                   />
-                  <Qty qty={po.qty_returned} value={po.returned_value} />
-                  <Qty qty={po.qty_outstanding} value={po.outstanding_value} />
+                  <Qty qty={po.qty_cancelled} value={po.cancelled_value} />
 
                   <td className={TD}>
                     <span
@@ -338,55 +347,41 @@ export function PoTable({
 }
 
 /**
- * The dispatched cell.
+ * The awaiting-transfer cell, and the PO's whole journey underneath it.
  *
- * The number is the live pool — units with customers right now. The bar and
- * the percentage answer a different question: how much of this PO has left
- * the shelf at all. Those two come apart as soon as anything is delivered,
- * and scoring the bar on the pool alone made a fully drained PO read as
- * half-served while the PO behind it in the queue looked served first.
+ * The number is what the supplier still has to move. The bar is every stage
+ * the approved quantity is spread across — awaiting transfer, in the Riyadh
+ * warehouse, out for delivery, delivered, and a muted share for anything
+ * released back — so it always fills exactly and the reader can see where a
+ * PO has got to without reading five columns.
  *
- * So the bar stacks all three states a departed unit can be in, and the
- * percentage is their total over approved. A fourth muted segment carries
- * anything released back to the supplier: those units never left the shelf,
- * so they are not in the percentage, but without them a PO that was fully
- * dispatched and partly released would read as unfinished when there is
- * nothing more to send. What is left of the track is what is still on the
- * shelf waiting to go.
+ * A return is not a segment: those units are back in Riyadh and are already
+ * counted under in warehouse.
  */
-function Dispatched({ po }: { po: Po }) {
-  const gone = poLeftShelf(po);
+function Journey({ po }: { po: Po }) {
+  const share = poShares(po);
 
   return (
     <td className={`${TD} text-end tabular-nums`}>
-      {gone.qty === 0 && po.qty_cancelled === 0 ? (
+      {po.qty_awaiting_transfer === 0 ? (
         <span className="text-ink-3">—</span>
       ) : (
         <>
-          {po.qty_in_progress === 0 ? (
-            // Everything that went out has since been settled: the pool is
-            // empty, but the PO still left the shelf in full.
-            <span className="text-ink-3">—</span>
-          ) : (
-            <b className="font-medium">{n(po.qty_in_progress)}</b>
-          )}
+          <b className="font-medium">{n(po.qty_awaiting_transfer)}</b>
           <div className="text-meta text-ink-3">
-            {Math.round(gone.pct)}%
-            {po.qty_in_progress === 0
-              ? null
-              : ` · ${money(po.in_progress_value)}`}
+            {money(po.awaiting_transfer_value)}
           </div>
-          <StackedProgress
-            className="mt-[4px] h-[4px]"
-            segments={[
-              { pct: gone.dispatchedPct, tone: "orange" },
-              { pct: gone.deliveredPct, tone: "green" },
-              { pct: gone.returnedPct, tone: "amber" },
-              { pct: gone.cancelledPct, tone: "muted" },
-            ]}
-          />
         </>
       )}
+      <StackedProgress
+        className="mt-[4px] h-[4px]"
+        segments={[
+          { pct: share.inWarehousePct, tone: "green" },
+          { pct: share.outForDeliveryPct, tone: "orange" },
+          { pct: share.deliveredPct, tone: "amber" },
+          { pct: share.cancelledPct, tone: "muted" },
+        ]}
+      />
     </td>
   );
 }

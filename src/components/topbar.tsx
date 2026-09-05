@@ -11,6 +11,7 @@ const roleKey = {
   sllr: "roleSllr",
   supplier: "roleSupplier",
   admin: "roleAdmin",
+  warehouse: "roleWarehouse",
 } as const;
 
 export function Topbar({ profile }: { profile: SessionProfile }) {

@@ -107,8 +107,8 @@ export function DailyForm({
     };
 
     return {
-      outstanding: roll((line) => line.outstanding),
-      inProgress: roll((line) => line.in_progress),
+      outstanding: roll((line) => line.in_warehouse),
+      inProgress: roll((line) => line.out_for_delivery),
     };
   }, [queue]);
 
@@ -329,7 +329,7 @@ export function DailyForm({
                       <td className={`${TD} tabular-nums`}>
                         <div className="text-meta text-ink-3">
                           {t(
-                            `pool${entry.pool === "outstanding" ? "Outstanding" : "InProgress"}`,
+                            `pool${entry.pool === "inWarehouse" ? "InWarehouse" : "OutForDelivery"}`,
                           )}
                         </div>
                         <span className="text-ink-3">{n(entry.before)}</span>
