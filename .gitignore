@@ -14,3 +14,7 @@ next-env.d.ts
 
 # supabase CLI scratch
 supabase/.temp
+
+# bulk product image drop, imported through the UI
+product-images/
+*.zip
